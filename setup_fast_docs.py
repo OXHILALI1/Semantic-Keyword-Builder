@@ -7,16 +7,30 @@ import subprocess
 import sys
 import os
 from pathlib import Path
+import shlex
 
 def run_command(command, description):
     """Run a shell command and handle errors."""
     print(f"🔄 {description}...")
     try:
-        result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
+        # Split the command string into a list for shell=False
+        command_args = shlex.split(command)
+        result = subprocess.run(
+            command_args,
+            shell=False,  # Set shell to False
+            check=True,
+            capture_output=True,
+            text=True
+        )
         print(f"✅ {description} completed successfully")
         return result.stdout
     except subprocess.CalledProcessError as e:
         print(f"❌ {description} failed: {e.stderr}")
+        # Consider logging e.stdout as well if it contains useful info
+        return None
+    except FileNotFoundError as e:
+        # This can happen if sys.executable or the script is not found
+        print(f"❌ {description} failed. Command not found: {e}")
         return None
 
 def install_dependencies():

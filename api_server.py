@@ -50,9 +50,15 @@ app.add_middleware(
 # Initialize database
 db = WorkflowDatabase()
 
+WORKFLOWS_DIR = "workflows" # Define base directory for workflows
+
 # Lock and flag for reindexing
 reindex_lock = threading.Lock()
 is_reindexing_flag = False
+
+# File Upload Security Constants
+MAX_UPLOAD_SIZE_MB = 5  # Max upload size in Megabytes
+MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
 # Response models
 class WorkflowSummary(BaseModel):
@@ -229,19 +235,34 @@ async def search_workflows(
 async def get_workflow_detail(filename: str):
     """Get detailed workflow information including raw JSON."""
     try:
-        # Get workflow metadata from database
+        # Validate filename and path
+        resolved_workflows_dir = Path(WORKFLOWS_DIR).resolve()
+        if os.path.basename(filename) != filename:
+            raise HTTPException(status_code=400, detail="Invalid filename format.")
+
+        requested_path = (resolved_workflows_dir / filename).resolve()
+
+        if not str(requested_path).startswith(str(resolved_workflows_dir) + os.sep):
+            raise HTTPException(status_code=400, detail="Invalid path specified.")
+
+        file_path_str = str(requested_path)
+
+        # Get workflow metadata from database (uses original filename)
         workflows, _ = db.search_workflows(f'filename:"{filename}"', limit=1)
         if not workflows:
-            raise HTTPException(status_code=404, detail="Workflow not found")
+            # This implies the DB entry exists, but the file might not, or filename is wrong.
+            # If filename caused path traversal, previous checks would catch it.
+            # If DB has entry but file missing (validated path), it's a server issue or data inconsistency.
+            raise HTTPException(status_code=404, detail="Workflow metadata not found in database.")
         
         workflow_meta = workflows[0]
         
-        # Load raw JSON from file
-        file_path = os.path.join("workflows", filename)
-        if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="Workflow file not found")
+        # Load raw JSON from file (uses validated file_path_str)
+        if not os.path.exists(file_path_str):
+            logging.error(f"Workflow file not found at validated path: {file_path_str} but DB entry exists for {filename}")
+            raise HTTPException(status_code=404, detail="Workflow file not found on server.")
         
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path_str, 'r', encoding='utf-8') as f:
             raw_json = json.load(f)
         
         return {
@@ -251,30 +272,53 @@ async def get_workflow_detail(filename: str):
     except HTTPException:
         raise
     except Exception as e:
+        # Logged by global handler
         raise HTTPException(status_code=500, detail=f"Error loading workflow: {str(e)}")
 
 @app.get("/api/workflows/{filename}/download")
 async def download_workflow(filename: str):
     """Download workflow JSON file."""
-    file_path = os.path.join("workflows", filename)
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Workflow file not found")
+    resolved_workflows_dir = Path(WORKFLOWS_DIR).resolve()
+    if os.path.basename(filename) != filename:
+        raise HTTPException(status_code=400, detail="Invalid filename format.")
+
+    requested_path = (resolved_workflows_dir / filename).resolve()
+
+    if not str(requested_path).startswith(str(resolved_workflows_dir) + os.sep):
+        raise HTTPException(status_code=400, detail="Invalid path specified.")
+
+    file_path_str = str(requested_path)
+
+    if not os.path.exists(file_path_str):
+        # Consider if this should be a 404 even if db might have an entry.
+        # For download, file must exist.
+        raise HTTPException(status_code=404, detail="Workflow file not found for download.")
     
     return FileResponse(
-        file_path,
+        file_path_str,
         media_type="application/json",
-        filename=filename
+        filename=filename # Keep original filename for download name suggestion
     )
 
 @app.get("/api/workflows/{filename}/diagram")
 async def get_workflow_diagram(filename: str):
     """Get Mermaid diagram code for workflow visualization."""
     try:
-        file_path = os.path.join("workflows", filename)
-        if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="Workflow file not found")
+        resolved_workflows_dir = Path(WORKFLOWS_DIR).resolve()
+        if os.path.basename(filename) != filename:
+            raise HTTPException(status_code=400, detail="Invalid filename format.")
+
+        requested_path = (resolved_workflows_dir / filename).resolve()
+
+        if not str(requested_path).startswith(str(resolved_workflows_dir) + os.sep):
+            raise HTTPException(status_code=400, detail="Invalid path specified.")
+
+        file_path_str = str(requested_path)
+
+        if not os.path.exists(file_path_str):
+            raise HTTPException(status_code=404, detail="Workflow file not found for diagram generation.")
         
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path_str, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
         nodes = data.get('nodes', [])
@@ -397,27 +441,60 @@ async def get_integrations():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching integrations: {str(e)}")
 
+async def _validate_uploaded_file_content(content_bytes: bytes, filename: str) -> Tuple[Optional[Dict[str, Any]], Optional[HTTPException]]:
+    """Validate uploaded file content for size, encoding, and basic JSON structure."""
+    # Size validation is already done before calling this, but good to have a logical place
+    if len(content_bytes) > MAX_UPLOAD_SIZE_BYTES: # This check is somewhat redundant if called after pre-check
+        return None, HTTPException(status_code=413, detail=f"File size exceeds limit of {MAX_UPLOAD_SIZE_MB}MB.")
+
+    # JSON decoding and structure validation
+    try:
+        json_string = content_bytes.decode('utf-8')
+        data = json.loads(json_string)
+    except UnicodeDecodeError:
+        return None, HTTPException(status_code=400, detail="Invalid file encoding. UTF-8 expected.")
+    except json.JSONDecodeError:
+        return None, HTTPException(status_code=400, detail="Invalid JSON format.")
+
+    if not isinstance(data, dict) or 'nodes' not in data or 'connections' not in data:
+        return None, HTTPException(status_code=400, detail="Invalid workflow structure. Missing 'nodes' or 'connections' keys.")
+
+    return data, None # Return parsed data and no error
+
 @app.post("/api/analyze-workflow", response_model=WorkflowAnalysisResponse)
 async def analyze_workflow(file: UploadFile = File(...)):
     """Analyze uploaded workflow file and suggest proper naming."""
-    if not file.filename.endswith('.json'):
-        raise HTTPException(status_code=400, detail="File must be a JSON file")
+    if not file.filename.endswith('.json'): # Basic filename check
+        raise HTTPException(status_code=400, detail="File must be a JSON file.")
 
-    temp_file_path = None  # Initialize to None
+    if file.content_type != "application/json":
+        raise HTTPException(status_code=415, detail="Invalid content type. Only application/json is accepted.")
+
+    await file.seek(0)
+    content = await file.read()
+    # Not seeking again as we use 'content' variable from now on.
+
+    if len(content) == 0:
+        raise HTTPException(status_code=400, detail="File is empty.")
+    if len(content) > MAX_UPLOAD_SIZE_BYTES:
+        raise HTTPException(status_code=413, detail=f"File size exceeds limit of {MAX_UPLOAD_SIZE_MB}MB.")
+
+    parsed_data, validation_error = await _validate_uploaded_file_content(content, file.filename)
+    if validation_error:
+        raise validation_error
+    # 'parsed_data' can be used if needed, but analyzer works with file path.
+    # 'content' (bytes) is what we'll write to temp file.
+
+    temp_file_path = None
     try:
-        # Create temporary file
         with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.json') as temp_file:
-            content = await file.read()
-            temp_file.write(content)
-            temp_file_path = temp_file.name # temp_file is closed here, path is valid
+            temp_file.write(content) # Write the validated byte content
+            temp_file_path = temp_file.name
 
-        # Ensure temp_file_path was set before proceeding
         if temp_file_path is None:
-            # This case should ideally not be reached if NamedTemporaryFile succeeds
-            logging.error("Failed to create temporary file for analysis, temp_file_path is None.")
+            logging.error("Failed to create temporary file for analysis post-validation, temp_file_path is None.")
             raise HTTPException(status_code=500, detail="Failed to create temporary file.")
 
-        # Analyze workflow using the temp_file_path
         analyzer = NewWorkflowAnalyzer()
         result = analyzer.analyze_workflow_file(temp_file_path)
         
@@ -460,22 +537,37 @@ async def add_workflow(
     background_tasks: BackgroundTasks = BackgroundTasks()
 ):
     """Add uploaded workflow file to repository with proper naming."""
-    if not file.filename.endswith('.json'):
-        raise HTTPException(status_code=400, detail="File must be a JSON file")
+    if not file.filename.endswith('.json'): # Basic filename check
+        raise HTTPException(status_code=400, detail="File must be a JSON file.")
+
+    if file.content_type != "application/json":
+        raise HTTPException(status_code=415, detail="Invalid content type. Only application/json is accepted.")
+
+    await file.seek(0)
+    content = await file.read()
+    # Not seeking again as we use 'content' variable from now on.
+
+    if len(content) == 0:
+        raise HTTPException(status_code=400, detail="File is empty.")
+    if len(content) > MAX_UPLOAD_SIZE_BYTES:
+        raise HTTPException(status_code=413, detail=f"File size exceeds limit of {MAX_UPLOAD_SIZE_MB}MB.")
+
+    parsed_data, validation_error = await _validate_uploaded_file_content(content, file.filename)
+    if validation_error:
+        raise validation_error
+    # 'parsed_data' can be used if needed.
+    # 'content' (bytes) is what we'll write to temp file.
 
     temp_file_path = None # Initialize
     try:
-        # Create temporary file
         with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.json') as temp_file:
-            content = await file.read()
-            temp_file.write(content)
+            temp_file.write(content) # Write the validated byte content
             temp_file_path = temp_file.name
 
         if temp_file_path is None:
-            logging.error("Failed to create temporary file for add, temp_file_path is None.")
+            logging.error("Failed to create temporary file for add post-validation, temp_file_path is None.")
             raise HTTPException(status_code=500, detail="Failed to create temporary file for add.")
 
-        # Add workflow using the temp_file_path
         adder = AutoWorkflowAdder()
         result = adder.add_workflow(temp_file_path, auto_confirm=auto_confirm, dry_run=False)
         
