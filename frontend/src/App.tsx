@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { WorkflowSummary, WorkflowStats, WorkflowAnalysis, SearchResponseData } from './types/workflow'
 import AppHeader from './components/AppHeader';
 import WorkflowSearch from './components/WorkflowSearch';
@@ -23,9 +23,14 @@ function App() {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, []) // fetchData is not added here as it's defined below and memoized.
+         // However, if fetchData were a prop or from context, it would be a dependency.
+         // For this specific structure, this useEffect runs once on mount.
+         // If `fetchData` itself were to change (e.g. if it had its own dependencies and was recreated),
+         // and this effect needed to re-run, then `fetchData` would be a dependency here.
+         // Given `fetchData`'s current empty dep array, it won't change.
 
-  const fetchData = (page: number = 1, query: string = '') => {
+  const fetchData = useCallback((page: number = 1, query: string = '') => {
     setIsLoading(true)
     
     // Fetch stats
@@ -53,7 +58,7 @@ function App() {
         console.error('Workflows error:', err)
         setIsLoading(false)
       })
-  }
+  }, []); // State setters (setIsLoading, setStats, etc.) are stable
 
   // Debounced search
   useEffect(() => {
@@ -61,9 +66,9 @@ function App() {
       fetchData(1, searchQuery)
     }, 500)
     return () => clearTimeout(timer)
-  }, [searchQuery])
+  }, [searchQuery, fetchData]); // Add fetchData as it's used
 
-  const handleFileSelect = (file: File) => {
+  const handleFileSelect = useCallback((file: File) => {
     setSelectedFile(file)
     setAnalysis(null)
     setIsAnalyzing(true)
@@ -84,9 +89,9 @@ function App() {
       console.error('Analysis error:', err)
       setIsAnalyzing(false)
     })
-  }
+  }, []); // Uses setters
 
-  const handleAddWorkflow = () => {
+  const handleAddWorkflow = useCallback(() => {
     if (!selectedFile) return
 
     setIsAdding(true)
@@ -111,13 +116,13 @@ function App() {
       console.error('Add workflow error:', err)
       setIsAdding(false)
     })
-  }
+  }, [selectedFile, currentPage, searchQuery, fetchData]);
 
-  const downloadWorkflow = (filename: string) => {
+  const downloadWorkflow = useCallback((filename: string) => {
     window.open(`/api/workflows/${filename}/download`, '_blank')
-  }
+  }, []);
 
-  const copyWorkflowJSON = async (filename: string) => {
+  const copyWorkflowJSON = useCallback(async (filename: string) => {
     try {
       const response = await fetch(`/api/workflows/${filename}`)
       const data = await response.json()
@@ -127,9 +132,9 @@ function App() {
     } catch (err) {
       console.error('Failed to copy JSON:', err)
     }
-  }
+  }, []);
 
-  const copyWorkflowMermaid = async (filename: string) => {
+  const copyWorkflowMermaid = useCallback(async (filename: string) => {
     try {
       const response = await fetch(`/api/workflows/${filename}/diagram`)
       const data = await response.json()
@@ -138,16 +143,24 @@ function App() {
     } catch (err) {
       console.error('Failed to copy Mermaid:', err)
     }
-  }
+  }, []);
 
-  const viewWorkflowDetails = (workflow: WorkflowSummary) => {
+  const viewWorkflowDetails = useCallback((workflow: WorkflowSummary) => {
     setSelectedWorkflow(workflow)
-  }
+  }, []);
 
-  const clearFileSelectionHandler = () => {
+  const clearFileSelectionHandler = useCallback(() => {
     setSelectedFile(null);
     setAnalysis(null);
-  }
+  }, []);
+
+  const handleShowAddModal = useCallback(() => setShowAddModal(true), []);
+  const handleCloseDetailsModal = useCallback(() => setSelectedWorkflow(null), []);
+  const handleCloseAddModal = useCallback(() => setShowAddModal(false), []);
+
+  const handlePageChange = useCallback((newPage: number) => {
+    fetchData(newPage, searchQuery);
+  }, [fetchData, searchQuery]);
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', padding: '20px' }}>
@@ -155,7 +168,7 @@ function App() {
         
         <AppHeader
           stats={stats}
-          onShowAddModal={() => setShowAddModal(true)}
+          onShowAddModal={handleShowAddModal}
           totalPages={totalPages}
           itemsPerPage={20} // Assuming 20 items per page from fetchData constant
           totalNodes={workflows.reduce((acc, w) => acc + (w.node_count || 0), 0)}
@@ -182,12 +195,12 @@ function App() {
         <AppPagination
           currentPage={currentPage}
           totalPages={totalPages}
-          onPageChange={(newPage) => fetchData(newPage, searchQuery)}
+          onPageChange={handlePageChange}
         />
 
         <WorkflowDetailsModal
           workflow={selectedWorkflow}
-          onClose={() => setSelectedWorkflow(null)}
+          onClose={handleCloseDetailsModal}
           onDownload={downloadWorkflow}
           onCopyJson={copyWorkflowJSON}
           onCopyMermaid={copyWorkflowMermaid}
@@ -195,7 +208,7 @@ function App() {
 
         <AddWorkflowModal
           show={showAddModal}
-          onClose={() => setShowAddModal(false)}
+          onClose={handleCloseAddModal}
           selectedFile={selectedFile}
           analysis={analysis}
           isAnalyzing={isAnalyzing}
