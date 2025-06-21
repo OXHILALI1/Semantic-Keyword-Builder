@@ -1085,6 +1085,12 @@
                         return;
                     }
                     
+                    // Check if modal still exists (might have been nuked by extension)
+                    if (!document.getElementById('addWorkflowModal')) {
+                        console.log('Modal was destroyed, recreating...');
+                        this.recreateModal();
+                    }
+                    
                     this.openAddWorkflowModal();
                 }, true);
 
@@ -1576,7 +1582,8 @@
             
             // Add Workflow Modal Methods
             openAddWorkflowModal() {
-                console.log('Opening add workflow modal');
+                console.log('🚨 MODAL OPEN TRIGGERED!');
+                console.trace('Call stack for modal open:');
                 
                 // Prevent rapid open/close cycles
                 if (this.state.modal.isClosing) {
@@ -1584,6 +1591,7 @@
                     return;
                 }
                 
+                console.log('Proceeding to open modal...');
                 this.state.modal.isOpen = true;
                 this.elements.addWorkflowModal.classList.add('active');
                 this.resetAddWorkflowModal();
@@ -1596,16 +1604,17 @@
                     this.state.modal.isClosing = true;
                     this.state.modal.isOpen = false;
                     
-                    // NUCLEAR OPTION: Remove modal from DOM entirely
+                    // NUCLEAR OPTION: Remove modal from DOM entirely  
                     if (this.elements.addWorkflowModal) {
                         this.elements.addWorkflowModal.remove();
+                        console.log('Modal removed - NO RECREATION due to extension interference');
                         
-                        // Recreate modal after delay - DEBUGGING VERSION
+                        // Reset state so Add Workflow button works again
                         setTimeout(() => {
-                            console.log('About to recreate modal...');
-                            this.recreateModal();
-                            console.log('Modal recreation complete');
-                        }, 1000);
+                            this.state.modal.isOpen = false;
+                            this.state.modal.isClosing = false;
+                            console.log('Modal state reset - Add Workflow button should work again');
+                        }, 100);
                     }
                     
                     this.resetAddWorkflowModal();
