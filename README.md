@@ -280,6 +280,55 @@ pip install fastapi uvicorn
 python3 api_server.py --reload
 ```
 
+## Testing
+
+The repository includes a comprehensive testing system to ensure reliability and maintain code quality.
+
+### Running Tests
+
+**Quick Test (Recommended for development):**
+```bash
+python run_tests.py --quick
+```
+
+**Run specific test suites:**
+```bash
+# Unit tests only
+python run_tests.py --unit
+
+# Integration tests only  
+python run_tests.py --integration
+
+# End-to-end tests only
+python run_tests.py --e2e
+
+# Check dependencies
+python run_tests.py --check-deps
+```
+
+**Run all tests:**
+```bash
+python run_tests.py
+```
+
+### Test Categories
+
+- **Unit Tests**: Test individual components (workflow analyzer, auto-adder)
+- **Integration Tests**: Test file operations and API endpoints
+- **End-to-End Tests**: Test complete workflow scenarios
+
+### Continuous Integration
+
+The repository includes automated CI/CD pipelines:
+
+- **Automated Tests**: Run on every push and pull request
+- **Multi-Platform Testing**: Validates compatibility across Linux, Windows, and macOS
+- **Python Version Testing**: Tests against Python 3.8, 3.9, 3.10, and 3.11
+- **Nightly Health Checks**: Comprehensive system health monitoring
+- **Release Validation**: Pre-release testing and validation
+
+All tests must pass before code can be merged to the main branch.
+
 ---
 
 ## 🤝 Contributing

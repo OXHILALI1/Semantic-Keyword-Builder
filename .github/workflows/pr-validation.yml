@@ -1,0 +1,281 @@
+name: Pull Request Validation
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  validate-pr:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for proper diff analysis
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest || echo "pytest not available, using unittest"
+
+    - name: Check for breaking changes
+      run: |
+        echo "Checking for potential breaking changes..."
+        
+        # Check if core analyzer or adder files were modified
+        if git diff --name-only origin/main...HEAD | grep -E "(new_workflow_analyzer\.py|auto_add_workflow\.py)"; then
+          echo "Core files modified - running comprehensive tests"
+          COMPREHENSIVE_TESTS=true
+        else
+          echo "No core files modified - running standard tests"
+          COMPREHENSIVE_TESTS=false
+        fi
+        echo "COMPREHENSIVE_TESTS=$COMPREHENSIVE_TESTS" >> $GITHUB_ENV
+
+    - name: Validate workflow files if changed
+      run: |
+        echo "Checking for workflow file changes..."
+        
+        # Get list of changed workflow files
+        changed_workflows=$(git diff --name-only origin/main...HEAD | grep "workflows/.*\.json$" || true)
+        
+        if [ -n "$changed_workflows" ]; then
+          echo "Workflow files changed, validating..."
+          
+          for workflow in $changed_workflows; do
+            if [ -f "$workflow" ]; then
+              echo "Validating $workflow..."
+              
+              # Check JSON syntax
+              if python -c "import json; json.load(open('$workflow'))"; then
+                echo "✓ $workflow - Valid JSON"
+              else
+                echo "✗ $workflow - Invalid JSON"
+                exit 1
+              fi
+              
+              # Check for required fields
+              python -c "
+import json
+import sys
+
+try:
+    with open('$workflow') as f:
+        data = json.load(f)
+    
+    required_fields = ['id', 'name', 'nodes', 'connections']
+    missing_fields = [field for field in required_fields if field not in data]
+    
+    if missing_fields:
+        print(f'✗ $workflow - Missing required fields: {missing_fields}')
+        sys.exit(1)
+    else:
+        print(f'✓ $workflow - Has required fields')
+        
+except Exception as e:
+    print(f'✗ $workflow - Error: {e}')
+    sys.exit(1)
+              "
+            else
+              echo "Warning: $workflow was deleted"
+            fi
+          done
+        else
+          echo "No workflow files changed"
+        fi
+
+    - name: Run focused tests based on changes
+      run: |
+        if [ "$COMPREHENSIVE_TESTS" = "true" ]; then
+          echo "Running comprehensive test suite..."
+          python run_tests.py
+        else
+          echo "Running focused test suite..."
+          python run_tests.py --quick
+          python run_tests.py --unit
+        fi
+
+    - name: Check documentation updates
+      run: |
+        echo "Checking if documentation needs updates..."
+        
+        # Check if code changes require README updates
+        if git diff --name-only origin/main...HEAD | grep -E "\.(py)$"; then
+          echo "Python files changed - checking if README mentions new features"
+          
+          # This is a simple check - in practice you might want more sophisticated analysis
+          if git diff origin/main...HEAD README.md | grep -E "^\+" > /dev/null; then
+            echo "✓ README.md was updated"
+          else
+            echo "⚠️ Python files changed but README.md wasn't updated - consider if documentation needs updating"
+          fi
+        fi
+
+    - name: Test backward compatibility
+      run: |
+        echo "Testing backward compatibility..."
+        
+        # Test that existing workflow files can still be processed
+        if [ -d "workflows" ] && [ "$(find workflows -name '*.json' | head -5)" ]; then
+          echo "Testing with existing workflow files..."
+          
+          # Test first 5 workflows to ensure they can still be analyzed
+          for workflow in $(find workflows -name '*.json' | head -5); do
+            echo "Testing analysis of $workflow..."
+            python -c "
+from new_workflow_analyzer import NewWorkflowAnalyzer
+analyzer = NewWorkflowAnalyzer()
+result = analyzer.analyze_workflow_file('$workflow')
+if result and result.get('success'):
+    print('✓ Successfully analyzed $workflow')
+else:
+    print('✗ Failed to analyze $workflow')
+    exit(1)
+            "
+          done
+        else
+          echo "No existing workflows to test - skipping backward compatibility check"
+        fi
+
+    - name: Performance regression check
+      run: |
+        echo "Checking for performance regressions..."
+        
+        # Simple performance test - analyze multiple workflows quickly
+        python -c "
+import time
+import tempfile
+import json
+from new_workflow_analyzer import NewWorkflowAnalyzer
+
+# Create test workflow
+test_workflow = {
+    'id': 'perf-test',
+    'name': 'Performance Test',
+    'nodes': [{'id': 'node1', 'type': 'n8n-nodes-base.manualTrigger'}],
+    'connections': {},
+    'active': True
+}
+
+with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    json.dump(test_workflow, f)
+    temp_path = f.name
+
+try:
+    analyzer = NewWorkflowAnalyzer()
+    
+    # Time multiple analyses
+    start_time = time.time()
+    for i in range(10):
+        result = analyzer.analyze_workflow_file(temp_path)
+        if not result or not result.get('success'):
+            print('✗ Analysis failed during performance test')
+            exit(1)
+    
+    end_time = time.time()
+    duration = end_time - start_time
+    
+    print(f'✓ Analyzed 10 workflows in {duration:.2f} seconds')
+    
+    if duration > 10:  # Should complete in under 10 seconds
+        print('⚠️ Performance regression detected - analysis took longer than expected')
+        exit(1)
+    else:
+        print('✓ Performance check passed')
+        
+finally:
+    import os
+    os.unlink(temp_path)
+        "
+
+  security-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check for sensitive data
+      run: |
+        echo "Checking for sensitive data in code..."
+        
+        # Check for potential secrets or sensitive data
+        sensitive_patterns=(
+          "password\s*=\s*['\"][^'\"]+['\"]"
+          "api_key\s*=\s*['\"][^'\"]+['\"]"
+          "secret\s*=\s*['\"][^'\"]+['\"]"
+          "token\s*=\s*['\"][^'\"]+['\"]"
+          "127\.0\.0\.1"
+          "localhost:[0-9]+"
+        )
+        
+        found_issues=false
+        
+        for pattern in "${sensitive_patterns[@]}"; do
+          if grep -r -E "$pattern" --include="*.py" --include="*.json" .; then
+            echo "⚠️ Found potential sensitive data matching pattern: $pattern"
+            found_issues=true
+          fi
+        done
+        
+        if [ "$found_issues" = "true" ]; then
+          echo "Please review the files above for sensitive data"
+          # Don't fail the build, just warn
+        else
+          echo "✓ No obvious sensitive data patterns found"
+        fi
+
+    - name: Check file permissions
+      run: |
+        echo "Checking file permissions..."
+        
+        # Check for files with overly permissive permissions
+        if find . -type f -perm /o+w | grep -v "\.git"; then
+          echo "⚠️ Found world-writable files"
+        else
+          echo "✓ No world-writable files found"
+        fi
+
+  comment-coverage:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+
+    - name: Generate test coverage summary
+      run: |
+        echo "Generating test coverage summary for PR..."
+        
+        # Run tests and capture results
+        python run_tests.py --quick > test_results.txt 2>&1 || true
+        
+        # Create a simple coverage report
+        echo "## Test Results Summary" > coverage_comment.md
+        echo "" >> coverage_comment.md
+        
+        if grep -q "Quick validation passed" test_results.txt; then
+          echo "✅ **Quick Validation**: PASSED" >> coverage_comment.md
+        else
+          echo "❌ **Quick Validation**: FAILED" >> coverage_comment.md
+        fi
+        
+        echo "" >> coverage_comment.md
+        echo "### Test Components:" >> coverage_comment.md
+        echo "- **Unit Tests**: Core functionality testing" >> coverage_comment.md
+        echo "- **Integration Tests**: File operations and API logic" >> coverage_comment.md
+        echo "- **End-to-End Tests**: Complete workflow scenarios" >> coverage_comment.md
+        echo "" >> coverage_comment.md
+        echo "*Full test suite results available in the Actions tab*" >> coverage_comment.md
+        
+        # Display the comment (in a real setup, this would be posted to the PR)
+        cat coverage_comment.md

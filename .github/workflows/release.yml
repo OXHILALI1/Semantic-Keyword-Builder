@@ -1,0 +1,333 @@
+name: Release Validation
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  release:
+    types: [published]
+
+jobs:
+  pre-release-validation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov || echo "pytest not available, using unittest"
+
+    - name: Run complete test suite
+      run: |
+        echo "Running complete test suite for release validation..."
+        python run_tests.py
+
+    - name: Validate release readiness
+      run: |
+        echo "Validating release readiness..."
+        
+        # Check that all required files exist
+        required_files=("README.md" "CLAUDE.md" "new_workflow_analyzer.py" "auto_add_workflow.py" "run_tests.py")
+        
+        for file in "${required_files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "❌ Missing required file: $file"
+            exit 1
+          fi
+        done
+        
+        echo "✅ All required files present"
+        
+        # Check version consistency
+        if [ -n "$GITHUB_REF_NAME" ]; then
+          echo "Release tag: $GITHUB_REF_NAME"
+          
+          # Extract version from tag (remove 'v' prefix if present)
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "Version: $VERSION"
+        fi
+
+    - name: Generate release artifacts
+      run: |
+        echo "Generating release artifacts..."
+        
+        # Create a release summary
+        {
+          echo "# Release Summary"
+          echo ""
+          echo "## Components Included"
+          echo "- **Workflow Analyzer**: Intelligent n8n workflow analysis and naming"
+          echo "- **Auto Workflow Adder**: Automated workflow repository management"
+          echo "- **Test Suite**: Comprehensive testing framework"
+          echo "- **Web Interface**: Browser-based workflow management"
+          echo "- **Documentation**: Complete setup and usage guides"
+          echo ""
+          echo "## Test Results"
+          echo "All tests passing ✅"
+          echo ""
+          echo "## Files Included"
+          ls -la *.py *.md *.ini 2>/dev/null || true
+          echo ""
+          echo "Generated on: $(date -u) UTC"
+        } > RELEASE_NOTES.md
+        
+        cat RELEASE_NOTES.md
+
+    - name: Performance validation
+      run: |
+        echo "Running performance validation for release..."
+        
+        python -c "
+import time
+import tempfile
+import json
+from new_workflow_analyzer import NewWorkflowAnalyzer
+from auto_add_workflow import AutoWorkflowAdder
+
+# Performance benchmark for release
+test_workflow = {
+    'id': 'release-test',
+    'name': 'Release Performance Test',
+    'nodes': [
+        {'id': 'trigger', 'type': 'n8n-nodes-base.webhook'},
+        {'id': 'slack', 'type': 'n8n-nodes-base.slack'},
+        {'id': 'gmail', 'type': 'n8n-nodes-base.gmail'}
+    ],
+    'connections': {'trigger': {'main': [['slack']]}, 'slack': {'main': [['gmail']]}},
+    'active': True
+}
+
+with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, dir=temp_dir) as f:
+        json.dump(test_workflow, f)
+        temp_file = f.name
+    
+    # Test analysis performance
+    analyzer = NewWorkflowAnalyzer(temp_dir)
+    start_time = time.time()
+    
+    for i in range(50):
+        result = analyzer.analyze_workflow_file(temp_file)
+        if not result or not result.get('success'):
+            print(f'❌ Analysis failed on iteration {i}')
+            exit(1)
+    
+    analysis_time = time.time() - start_time
+    
+    # Test addition performance
+    adder = AutoWorkflowAdder(temp_dir)
+    start_time = time.time()
+    
+    for i in range(20):
+        result = adder.add_workflow(temp_file, auto_confirm=True, dry_run=True)
+        if not result or not result.get('success'):
+            print(f'❌ Addition failed on iteration {i}')
+            exit(1)
+    
+    addition_time = time.time() - start_time
+    
+    print(f'Release Performance Results:')
+    print(f'  Analysis: 50 iterations in {analysis_time:.2f}s ({analysis_time/50:.3f}s avg)')
+    print(f'  Addition: 20 iterations in {addition_time:.2f}s ({addition_time/20:.3f}s avg)')
+    
+    # Performance criteria for release
+    if analysis_time/50 > 0.1:  # More than 100ms per analysis
+        print('❌ Analysis performance does not meet release criteria')
+        exit(1)
+    
+    if addition_time/20 > 0.5:  # More than 500ms per addition
+        print('❌ Addition performance does not meet release criteria')
+        exit(1)
+    
+    print('✅ Performance meets release criteria')
+        "
+
+  multi-platform-validation:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest || echo "pytest not available, using unittest"
+
+    - name: Run platform-specific tests
+      run: |
+        python run_tests.py --quick
+
+    - name: Test workflow processing
+      run: |
+        python run_tests.py --unit
+
+  documentation-validation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Validate documentation completeness
+      run: |
+        echo "Validating documentation for release..."
+        
+        # Check README.md structure
+        if grep -q "# n8n Workflow Repository" README.md; then
+          echo "✅ README.md has correct title"
+        else
+          echo "❌ README.md missing proper title"
+          exit 1
+        fi
+        
+        # Check for required sections
+        required_sections=("Installation" "Usage" "Features" "Testing")
+        
+        for section in "${required_sections[@]}"; do
+          if grep -qi "$section" README.md; then
+            echo "✅ README.md contains $section section"
+          else
+            echo "⚠️ README.md missing $section section"
+          fi
+        done
+        
+        # Check CLAUDE.md for AI context
+        if [ -f "CLAUDE.md" ] && grep -q "n8n-workflows" CLAUDE.md; then
+          echo "✅ CLAUDE.md contains project context"
+        else
+          echo "⚠️ CLAUDE.md missing or incomplete"
+        fi
+
+    - name: Check code documentation
+      run: |
+        echo "Checking code documentation..."
+        
+        # Check for docstrings in main modules
+        python -c "
+import ast
+import sys
+
+def check_docstrings(filename):
+    try:
+        with open(filename, 'r') as f:
+            tree = ast.parse(f.read())
+        
+        classes = [node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)]
+        functions = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
+        
+        documented_classes = sum(1 for cls in classes if ast.get_docstring(cls))
+        documented_functions = sum(1 for func in functions if ast.get_docstring(func))
+        
+        print(f'{filename}:')
+        print(f'  Classes: {documented_classes}/{len(classes)} documented')
+        print(f'  Functions: {documented_functions}/{len(functions)} documented')
+        
+        return documented_classes / len(classes) if classes else 1, documented_functions / len(functions) if functions else 1
+    
+    except Exception as e:
+        print(f'Error checking {filename}: {e}')
+        return 0, 0
+
+# Check main modules
+files_to_check = ['new_workflow_analyzer.py', 'auto_add_workflow.py']
+total_class_coverage = 0
+total_function_coverage = 0
+
+for filename in files_to_check:
+    class_cov, func_cov = check_docstrings(filename)
+    total_class_coverage += class_cov
+    total_function_coverage += func_cov
+
+avg_class_coverage = total_class_coverage / len(files_to_check)
+avg_function_coverage = total_function_coverage / len(files_to_check)
+
+print(f'\\nOverall documentation coverage:')
+print(f'  Classes: {avg_class_coverage:.1%}')
+print(f'  Functions: {avg_function_coverage:.1%}')
+
+if avg_class_coverage < 0.5 or avg_function_coverage < 0.3:
+    print('⚠️ Low documentation coverage')
+else:
+    print('✅ Adequate documentation coverage')
+        "
+
+  security-audit:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Security audit for release
+      run: |
+        echo "Running security audit for release..."
+        
+        # Check for hardcoded secrets
+        echo "Checking for hardcoded secrets..."
+        
+        if grep -r -i -E "(password|secret|key|token)\s*=\s*['\"][^'\"]{8,}['\"]" --include="*.py" .; then
+          echo "❌ Potential hardcoded secrets found"
+          exit 1
+        else
+          echo "✅ No hardcoded secrets detected"
+        fi
+        
+        # Check for unsafe code patterns
+        echo "Checking for unsafe code patterns..."
+        
+        unsafe_patterns=("eval(" "exec(" "subprocess.*shell=True" "__import__")
+        
+        for pattern in "${unsafe_patterns[@]}"; do
+          if grep -r -E "$pattern" --include="*.py" .; then
+            echo "⚠️ Found potentially unsafe pattern: $pattern"
+          fi
+        done
+        
+        echo "✅ Security audit completed"
+
+  release-summary:
+    needs: [pre-release-validation, multi-platform-validation, documentation-validation, security-audit]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Generate release summary
+      run: |
+        echo "# Release Validation Complete ✅"
+        echo ""
+        echo "## Validation Results"
+        echo "- ✅ Pre-release validation passed"
+        echo "- ✅ Multi-platform compatibility confirmed"
+        echo "- ✅ Documentation validated"
+        echo "- ✅ Security audit passed"
+        echo ""
+        echo "## Platform Support"
+        echo "- ✅ Linux (Ubuntu)"
+        echo "- ✅ Windows"
+        echo "- ✅ macOS"
+        echo ""
+        echo "## Python Compatibility"
+        echo "- ✅ Python 3.8+"
+        echo "- ✅ Python 3.9+"
+        echo "- ✅ Python 3.10+"
+        echo "- ✅ Python 3.11+"
+        echo ""
+        echo "🎉 **Release is ready for deployment**"
+        echo ""
+        echo "Generated on: $(date -u) UTC"
