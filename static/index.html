@@ -1591,36 +1591,119 @@
 
             closeAddWorkflowModal() {
                 try {
-                    console.log('Closing add workflow modal');
+                    console.log('NUCLEAR CLOSE - Removing modal from DOM');
                     
-                    // Set closing flag to prevent reopening
                     this.state.modal.isClosing = true;
                     this.state.modal.isOpen = false;
                     
-                    // Force close with multiple methods to combat extension interference
+                    // NUCLEAR OPTION: Remove modal from DOM entirely
                     if (this.elements.addWorkflowModal) {
-                        this.elements.addWorkflowModal.classList.remove('active');
-                        this.elements.addWorkflowModal.style.display = 'none';
+                        this.elements.addWorkflowModal.remove();
                         
-                        // Reset after a delay to ensure DOM updates and prevent reopening
+                        // Recreate modal after delay to prevent extension from finding it
                         setTimeout(() => {
-                            if (this.elements.addWorkflowModal) {
-                                this.elements.addWorkflowModal.style.display = '';
-                            }
+                            this.recreateModal();
                             this.state.modal.isClosing = false;
-                        }, 500);
+                        }, 1000);
                     }
                     
                     this.resetAddWorkflowModal();
-                    console.log('Add workflow modal closed');
+                    console.log('Modal NUKED from DOM');
                 } catch (error) {
                     console.error('Error closing modal:', error);
-                    // Force close as fallback
-                    if (this.elements.addWorkflowModal) {
-                        this.elements.addWorkflowModal.style.display = 'none';
-                    }
                     this.state.modal.isClosing = false;
                 }
+            }
+            
+            recreateModal() {
+                // Recreate the modal HTML
+                const modalHTML = `
+                    <div id="addWorkflowModal" class="modal">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h2 class="modal-title">Add New Workflow</h2>
+                                <button class="modal-close" id="addModalClose">×</button>
+                            </div>
+                            <div class="upload-area" id="uploadArea">
+                                <div class="upload-icon">📁</div>
+                                <div class="upload-text">Drag & drop your workflow JSON file here</div>
+                                <div class="upload-hint">or click to browse files</div>
+                                <input type="file" id="fileInput" class="file-input" accept=".json">
+                            </div>
+                            <div class="analysis-result" id="analysisResult">
+                                <div class="analysis-header">
+                                    <div class="analysis-icon">🔍</div>
+                                    <div class="analysis-title">Workflow Analysis</div>
+                                </div>
+                                <div class="analysis-details" id="analysisDetails"></div>
+                                <div class="suggested-filename" id="suggestedFilename"></div>
+                            </div>
+                            <div class="modal-actions">
+                                <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                                <button class="btn btn-primary" id="addBtn" disabled>
+                                    <span id="addBtnText">Add Workflow</span>
+                                    <span class="loading-spinner" id="addBtnSpinner" style="display: none;"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+                
+                // Add to body
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+                // Update element references
+                this.elements.addWorkflowModal = document.getElementById('addWorkflowModal');
+                this.elements.addModalClose = document.getElementById('addModalClose');
+                this.elements.uploadArea = document.getElementById('uploadArea');
+                this.elements.fileInput = document.getElementById('fileInput');
+                this.elements.analysisResult = document.getElementById('analysisResult');
+                this.elements.analysisDetails = document.getElementById('analysisDetails');
+                this.elements.suggestedFilename = document.getElementById('suggestedFilename');
+                this.elements.cancelBtn = document.getElementById('cancelBtn');
+                this.elements.addBtn = document.getElementById('addBtn');
+                this.elements.addBtnText = document.getElementById('addBtnText');
+                this.elements.addBtnSpinner = document.getElementById('addBtnSpinner');
+                
+                // Reattach event listeners
+                this.setupModalEventListeners();
+            }
+            
+            setupModalEventListeners() {
+                if (this.elements.addModalClose) {
+                    this.elements.addModalClose.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        this.closeAddWorkflowModal();
+                    }, true);
+                }
+
+                this.elements.cancelBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    this.closeAddWorkflowModal();
+                }, true);
+
+                this.elements.addWorkflowModal.addEventListener('click', (e) => {
+                    if (e.target === this.elements.addWorkflowModal) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.closeAddWorkflowModal();
+                    }
+                }, true);
+
+                this.elements.uploadArea.addEventListener('click', () => {
+                    this.elements.fileInput.click();
+                });
+
+                this.elements.fileInput.addEventListener('change', (e) => {
+                    this.handleFileSelect(e.target.files[0]);
+                });
+
+                this.elements.addBtn.addEventListener('click', () => {
+                    this.addWorkflowToRepository();
+                });
             }
 
             resetAddWorkflowModal() {
