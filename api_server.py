@@ -39,6 +39,20 @@ app.add_middleware(
 # Initialize database
 db = WorkflowDatabase()
 
+# Startup function to verify database
+@app.on_event("startup")
+async def startup_event():
+    """Verify database connectivity on startup."""
+    try:
+        stats = db.get_stats()
+        if stats['total'] == 0:
+            print("⚠️  Warning: No workflows found in database. Run indexing first.")
+        else:
+            print(f"✅ Database connected: {stats['total']} workflows indexed")
+    except Exception as e:
+        print(f"❌ Database connection failed: {e}")
+        raise
+
 # Response models
 class WorkflowSummary(BaseModel):
     id: Optional[int] = None
@@ -344,6 +358,68 @@ async def get_integrations():
         return {"integrations": [], "count": stats['unique_integrations']}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching integrations: {str(e)}")
+
+@app.get("/api/categories")
+async def get_categories():
+    """Get available service categories for filtering."""
+    try:
+        categories = db.get_service_categories()
+        return {"categories": categories}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching categories: {str(e)}")
+
+@app.get("/api/workflows/category/{category}", response_model=SearchResponse)
+async def search_workflows_by_category(
+    category: str,
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(20, ge=1, le=100, description="Items per page")
+):
+    """Search workflows by service category (messaging, database, ai_ml, etc.)."""
+    try:
+        offset = (page - 1) * per_page
+        
+        workflows, total = db.search_by_category(
+            category=category,
+            limit=per_page,
+            offset=offset
+        )
+        
+        # Convert to Pydantic models with error handling
+        workflow_summaries = []
+        for workflow in workflows:
+            try:
+                clean_workflow = {
+                    'id': workflow.get('id'),
+                    'filename': workflow.get('filename', ''),
+                    'name': workflow.get('name', ''),
+                    'active': workflow.get('active', False),
+                    'description': workflow.get('description', ''),
+                    'trigger_type': workflow.get('trigger_type', 'Manual'),
+                    'complexity': workflow.get('complexity', 'low'),
+                    'node_count': workflow.get('node_count', 0),
+                    'integrations': workflow.get('integrations', []),
+                    'tags': workflow.get('tags', []),
+                    'created_at': workflow.get('created_at'),
+                    'updated_at': workflow.get('updated_at')
+                }
+                workflow_summaries.append(WorkflowSummary(**clean_workflow))
+            except Exception as e:
+                print(f"Error converting workflow {workflow.get('filename', 'unknown')}: {e}")
+                continue
+        
+        pages = (total + per_page - 1) // per_page
+        
+        return SearchResponse(
+            workflows=workflow_summaries,
+            total=total,
+            page=page,
+            per_page=per_page,
+            pages=pages,
+            query=f"category:{category}",
+            filters={"category": category}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error searching by category: {str(e)}")
 
 # Custom exception handler for better error responses
 @app.exception_handler(Exception)
