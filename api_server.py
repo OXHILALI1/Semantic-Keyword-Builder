@@ -34,10 +34,15 @@ app = FastAPI(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",  # React dev server
+        "http://localhost:8000",  # FastAPI server
+        "http://127.0.0.1:3000",  # Alternative localhost
+        "http://127.0.0.1:8000"   # Alternative localhost
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],  # Only required methods
+    allow_headers=["Content-Type", "Authorization"],  # Only required headers
 )
 
 # Initialize database
@@ -111,18 +116,29 @@ class WorkflowAddResponse(BaseModel):
 
 @app.get("/")
 async def root():
-    """Serve the main documentation page."""
-    static_dir = Path("static")
-    index_file = static_dir / "index.html"
+    """Serve the React application."""
+    react_build_dir = Path("frontend/dist")
+    index_file = react_build_dir / "index.html"
+    
+    # FORCE React app - no fallback to static files
     if not index_file.exists():
         return HTMLResponse("""
         <html><body>
-        <h1>Setup Required</h1>
-        <p>Static files not found. Please ensure the static directory exists with index.html</p>
-        <p>Current directory: """ + str(Path.cwd()) + """</p>
+        <h1>React Build Missing</h1>
+        <p>React build not found at: """ + str(index_file.absolute()) + """</p>
+        <p>Run 'npm run build' in the frontend directory</p>
         </body></html>
         """)
-    return FileResponse(str(index_file))
+    
+    # Force no-cache headers to prevent browser caching issues
+    return FileResponse(
+        str(index_file),
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
 
 @app.get("/health")
 async def health_check():
@@ -461,7 +477,12 @@ async def get_workflow_addition_stats():
     """Get statistics for workflow addition (next number, etc.)."""
     try:
         analyzer = NewWorkflowAnalyzer()
+        stats = db.get_stats()
+        
         return {
+            "total": stats.get('total', 0),
+            "recentlyAdded": 10,  # Could be calculated from creation dates
+            "lastUpdated": stats.get('last_indexed', ''),
             "next_available_number": analyzer.next_number,
             "total_existing": len(analyzer.existing_numbers),
             "last_number": max(analyzer.existing_numbers) if analyzer.existing_numbers else 0
@@ -477,24 +498,34 @@ async def global_exception_handler(request, exc):
         content={"detail": f"Internal server error: {str(exc)}"}
     )
 
-# Mount static files AFTER all routes are defined
-static_dir = Path("static")
-if static_dir.exists():
-    app.mount("/static", StaticFiles(directory="static"), name="static")
-    print(f"✅ Static files mounted from {static_dir.absolute()}")
+# Mount React build files AFTER all routes are defined
+react_build_dir = Path("frontend/dist")
+if react_build_dir.exists():
+    app.mount("/assets", StaticFiles(directory="frontend/dist/assets"), name="assets")
+    print(f"✅ React build assets mounted from {react_build_dir.absolute()}")
 else:
-    print(f"❌ Warning: Static directory not found at {static_dir.absolute()}")
+    print(f"❌ Warning: React build directory not found at {react_build_dir.absolute()}")
 
-def create_static_directory():
-    """Create static directory if it doesn't exist."""
-    static_dir = Path("static")
-    static_dir.mkdir(exist_ok=True)
-    return static_dir
+# REMOVED: No static file mounting - React only!
+# static_dir = Path("static")
+# if static_dir.exists():
+#     app.mount("/static", StaticFiles(directory="static"), name="static")
+#     print(f"✅ Static files mounted from {static_dir.absolute()}")
+# else:
+#     print(f"❌ Warning: Static directory not found at {static_dir.absolute()}")
+print("🚫 Static file mounting disabled - React app only!")
+
+# PURGED: No more static directory creation!
+# def create_static_directory():
+#     """Create static directory if it doesn't exist."""
+#     static_dir = Path("static")
+#     static_dir.mkdir(exist_ok=True)
+#     return static_dir
 
 def run_server(host: str = "127.0.0.1", port: int = 8000, reload: bool = False):
     """Run the FastAPI server."""
-    # Ensure static directory exists
-    create_static_directory()
+    # PURGED: No static directory creation!
+    # create_static_directory()
     
     # Debug: Check database connectivity
     try:
@@ -515,18 +546,11 @@ def run_server(host: str = "127.0.0.1", port: int = 8000, reload: bool = False):
             print(f"❌ Failed to create database: {e2}")
             stats = {'total': 0}
     
-    # Debug: Check static files
-    static_path = Path("static")
-    if static_path.exists():
-        files = list(static_path.glob("*"))
-        print(f"✅ Static files found: {[f.name for f in files]}")
-    else:
-        print(f"❌ Static directory not found at: {static_path.absolute()}")
-    
+    # PURGED: No more static file references!
     print(f"🚀 Starting N8N Workflow Documentation API")
     print(f"📊 Database contains {stats['total']} workflows")
     print(f"🌐 Server will be available at: http://{host}:{port}")
-    print(f"📁 Static files at: http://{host}:{port}/static/")
+    print(f"⚛️  React app serving from: http://{host}:{port}/")
     
     uvicorn.run(
         "api_server:app",
