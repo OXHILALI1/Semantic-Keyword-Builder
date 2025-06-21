@@ -1605,7 +1605,7 @@
                     this.state.modal.closeAttempts++;
                     
                     // Detect extension interference (multiple rapid close attempts)
-                    if (this.state.modal.closeAttempts > 2) {
+                    if (this.state.modal.closeAttempts > 1) {
                         console.warn('Extension interference detected - using nuclear option');
                         this.state.modal.extensionInterference = true;
                     }
