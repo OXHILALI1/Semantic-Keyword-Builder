@@ -1600,10 +1600,11 @@
                     if (this.elements.addWorkflowModal) {
                         this.elements.addWorkflowModal.remove();
                         
-                        // Recreate modal after delay to prevent extension from finding it
+                        // Recreate modal after delay - DEBUGGING VERSION
                         setTimeout(() => {
+                            console.log('About to recreate modal...');
                             this.recreateModal();
-                            this.state.modal.isClosing = false;
+                            console.log('Modal recreation complete');
                         }, 1000);
                     }
                     
@@ -1616,7 +1617,8 @@
             }
             
             recreateModal() {
-                // Recreate the modal HTML
+                console.log('Recreating modal - ensuring it stays CLOSED');
+                // Recreate the modal HTML - ENSURE IT'S NOT ACTIVE
                 const modalHTML = `
                     <div id="addWorkflowModal" class="modal">
                         <div class="modal-content">
@@ -1666,6 +1668,12 @@
                 
                 // Reattach event listeners
                 this.setupModalEventListeners();
+                
+                // CRITICAL: Ensure modal stays closed and state is reset
+                this.elements.addWorkflowModal.classList.remove('active');
+                this.state.modal.isOpen = false;
+                this.state.modal.isClosing = false;
+                console.log('Modal recreated and FORCED to stay closed');
             }
             
             setupModalEventListeners() {
