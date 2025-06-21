@@ -1,0 +1,77 @@
+{
+  "id": "test-gmail-001",
+  "name": "Email Newsletter Automation",
+  "nodes": [
+    {
+      "id": "cron-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.cron",
+      "position": [100, 100],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 1"
+            }
+          ]
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "gmail-node",
+      "name": "Send Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "position": [300, 100],
+      "parameters": {
+        "operation": "send",
+        "sendTo": "subscribers@example.com",
+        "subject": "Weekly Newsletter",
+        "emailType": "html"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "airtable-node",
+      "name": "Get Airtable Data",
+      "type": "n8n-nodes-base.airtable",
+      "position": [200, 100],
+      "parameters": {
+        "operation": "list",
+        "application": "newsletter",
+        "table": "content"
+      },
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Airtable Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Airtable Data": {
+      "main": [
+        [
+          {
+            "node": "Send Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "createdAt": "2025-06-21T06:00:00.000Z",
+  "updatedAt": "2025-06-21T06:00:00.000Z",
+  "tags": []
+}

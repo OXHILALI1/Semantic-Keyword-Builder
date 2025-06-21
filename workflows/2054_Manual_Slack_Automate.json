@@ -1,0 +1,71 @@
+{
+  "id": "test-workflow-001",
+  "name": "Test Slack Notification Workflow",
+  "nodes": [
+    {
+      "id": "trigger-node",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [100, 100],
+      "parameters": {},
+      "typeVersion": 1
+    },
+    {
+      "id": "slack-node",
+      "name": "Send Slack Message",
+      "type": "n8n-nodes-base.slack",
+      "position": [300, 100],
+      "parameters": {
+        "channel": "#general",
+        "text": "Hello from n8n workflow!"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "set-node",
+      "name": "Set Data",
+      "type": "n8n-nodes-base.set",
+      "position": [200, 100],
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "message",
+              "value": "Test completed"
+            }
+          ]
+        }
+      },
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Data": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "createdAt": "2025-06-21T06:00:00.000Z",
+  "updatedAt": "2025-06-21T06:00:00.000Z",
+  "tags": []
+}

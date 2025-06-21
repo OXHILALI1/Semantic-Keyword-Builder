@@ -1,0 +1,69 @@
+{
+  "id": "test-webhook-001",
+  "name": "GitHub Issues to Discord Sync",
+  "nodes": [
+    {
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [100, 100],
+      "parameters": {
+        "path": "github-issues",
+        "httpMethod": "POST"
+      },
+      "typeVersion": 1,
+      "webhookId": "test-webhook-id"
+    },
+    {
+      "id": "discord-node",
+      "name": "Send Discord Message",
+      "type": "n8n-nodes-base.discord",
+      "position": [300, 100],
+      "parameters": {
+        "operation": "sendMessage",
+        "channelId": "123456789",
+        "content": "New GitHub issue: {{$json.title}}"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "function-node",
+      "name": "Process Data",
+      "type": "n8n-nodes-base.function",
+      "position": [200, 100],
+      "parameters": {
+        "functionCode": "return [{title: items[0].json.issue.title}];"
+      },
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Data": {
+      "main": [
+        [
+          {
+            "node": "Send Discord Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "createdAt": "2025-06-21T06:00:00.000Z",
+  "updatedAt": "2025-06-21T06:00:00.000Z",
+  "tags": []
+}
