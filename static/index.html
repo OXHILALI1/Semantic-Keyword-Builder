@@ -966,7 +966,9 @@
                         currentFile: null,
                         analysisData: null,
                         isAnalyzing: false,
-                        isAdding: false
+                        isAdding: false,
+                        extensionInterference: false,
+                        closeAttempts: 0
                     }
                 };
                 
@@ -1599,26 +1601,47 @@
 
             closeAddWorkflowModal() {
                 try {
-                    console.log('NUCLEAR CLOSE - Removing modal from DOM');
+                    console.log('Closing add workflow modal');
+                    this.state.modal.closeAttempts++;
+                    
+                    // Detect extension interference (multiple rapid close attempts)
+                    if (this.state.modal.closeAttempts > 2) {
+                        console.warn('Extension interference detected - using nuclear option');
+                        this.state.modal.extensionInterference = true;
+                    }
                     
                     this.state.modal.isClosing = true;
                     this.state.modal.isOpen = false;
                     
-                    // NUCLEAR OPTION: Remove modal from DOM entirely  
-                    if (this.elements.addWorkflowModal) {
-                        this.elements.addWorkflowModal.remove();
-                        console.log('Modal removed - NO RECREATION due to extension interference');
-                        
-                        // Reset state so Add Workflow button works again
-                        setTimeout(() => {
-                            this.state.modal.isOpen = false;
-                            this.state.modal.isClosing = false;
-                            console.log('Modal state reset - Add Workflow button should work again');
-                        }, 100);
+                    if (this.state.modal.extensionInterference) {
+                        // NUCLEAR OPTION: Only for users with extension interference
+                        console.log('NUCLEAR CLOSE - Extension interference mode');
+                        if (this.elements.addWorkflowModal) {
+                            this.elements.addWorkflowModal.remove();
+                            
+                            // Reset state for next time
+                            setTimeout(() => {
+                                this.state.modal.isOpen = false;
+                                this.state.modal.isClosing = false;
+                                this.state.modal.closeAttempts = 0;
+                            }, 100);
+                        }
+                    } else {
+                        // NORMAL CLOSE: Standard behavior for most users
+                        console.log('Normal modal close');
+                        if (this.elements.addWorkflowModal) {
+                            this.elements.addWorkflowModal.classList.remove('active');
+                            
+                            // Reset close attempts after successful close
+                            setTimeout(() => {
+                                this.state.modal.isClosing = false;
+                                this.state.modal.closeAttempts = 0;
+                            }, 300);
+                        }
                     }
                     
                     this.resetAddWorkflowModal();
-                    console.log('Modal NUKED from DOM');
+                    console.log('Modal closed successfully');
                 } catch (error) {
                     console.error('Error closing modal:', error);
                     this.state.modal.isClosing = false;
