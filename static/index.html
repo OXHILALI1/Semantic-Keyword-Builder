@@ -172,6 +172,244 @@
             margin-left: auto;
         }
 
+        .add-workflow-btn {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            margin-right: 1rem;
+        }
+
+        .add-workflow-btn:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+
+        .add-workflow-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--bg);
+            border-radius: 1rem;
+            padding: 2rem;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--bg-tertiary);
+            color: var(--text);
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 0.75rem;
+            padding: 3rem 2rem;
+            text-align: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            margin-bottom: 2rem;
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: var(--primary);
+            background: var(--bg-secondary);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .upload-text {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-hint {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .analysis-result {
+            background: var(--bg-secondary);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: none;
+        }
+
+        .analysis-result.active {
+            display: block;
+        }
+
+        .analysis-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .analysis-icon {
+            font-size: 1.5rem;
+            margin-right: 0.75rem;
+        }
+
+        .analysis-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .analysis-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .analysis-item {
+            padding: 1rem;
+            background: var(--bg);
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .analysis-item-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+        }
+
+        .analysis-item-value {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .suggested-filename {
+            background: var(--primary);
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-secondary);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         .results-info {
             margin-top: 1rem;
             font-size: 0.875rem;
@@ -602,6 +840,7 @@
                         </label>
                     </div>
                     
+                    <button id="addWorkflowBtn" class="add-workflow-btn">➕ Add Workflow</button>
                     <button id="themeToggle" class="theme-toggle">🌙</button>
                 </div>
                 
@@ -720,6 +959,13 @@
                         trigger: 'all',
                         complexity: 'all',
                         activeOnly: false
+                    },
+                    modal: {
+                        isOpen: false,
+                        currentFile: null,
+                        analysisData: null,
+                        isAnalyzing: false,
+                        isAdding: false
                     }
                 };
                 
@@ -742,6 +988,18 @@
                     activeCount: document.getElementById('activeCount'),
                     nodeCount: document.getElementById('nodeCount'),
                     integrationCount: document.getElementById('integrationCount'),
+                    // Add workflow modal elements
+                    addWorkflowBtn: document.getElementById('addWorkflowBtn'),
+                    addWorkflowModal: document.getElementById('addWorkflowModal'),
+                    uploadArea: document.getElementById('uploadArea'),
+                    fileInput: document.getElementById('fileInput'),
+                    analysisResult: document.getElementById('analysisResult'),
+                    analysisDetails: document.getElementById('analysisDetails'),
+                    suggestedFilename: document.getElementById('suggestedFilename'),
+                    cancelBtn: document.getElementById('cancelBtn'),
+                    addBtn: document.getElementById('addBtn'),
+                    addBtnText: document.getElementById('addBtnText'),
+                    addBtnSpinner: document.getElementById('addBtnSpinner'),
                     // Modal elements
                     workflowModal: document.getElementById('workflowModal'),
                     modalTitle: document.getElementById('modalTitle'),
@@ -811,6 +1069,53 @@
                 // Theme toggle
                 this.elements.themeToggle.addEventListener('click', () => {
                     this.toggleTheme();
+                });
+
+                // Add workflow modal events
+                this.elements.addWorkflowBtn.addEventListener('click', () => {
+                    this.openAddWorkflowModal();
+                });
+
+                this.elements.cancelBtn.addEventListener('click', () => {
+                    this.closeAddWorkflowModal();
+                });
+
+                this.elements.addWorkflowModal.addEventListener('click', (e) => {
+                    if (e.target === this.elements.addWorkflowModal) {
+                        this.closeAddWorkflowModal();
+                    }
+                });
+
+                // Upload area events
+                this.elements.uploadArea.addEventListener('click', () => {
+                    this.elements.fileInput.click();
+                });
+
+                this.elements.fileInput.addEventListener('change', (e) => {
+                    this.handleFileSelect(e.target.files[0]);
+                });
+
+                // Drag and drop events
+                this.elements.uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    this.elements.uploadArea.classList.add('dragover');
+                });
+
+                this.elements.uploadArea.addEventListener('dragleave', (e) => {
+                    e.preventDefault();
+                    this.elements.uploadArea.classList.remove('dragover');
+                });
+
+                this.elements.uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    this.elements.uploadArea.classList.remove('dragover');
+                    const file = e.dataTransfer.files[0];
+                    if (file) this.handleFileSelect(file);
+                });
+
+                // Add workflow button
+                this.elements.addBtn.addEventListener('click', () => {
+                    this.addWorkflowToRepository();
                 });
                 
                 // Modal events
@@ -1234,6 +1539,160 @@
                 }, 2000);
             }
             
+            // Add Workflow Modal Methods
+            openAddWorkflowModal() {
+                this.state.modal.isOpen = true;
+                this.elements.addWorkflowModal.classList.add('active');
+                this.resetAddWorkflowModal();
+            }
+
+            closeAddWorkflowModal() {
+                this.state.modal.isOpen = false;
+                this.elements.addWorkflowModal.classList.remove('active');
+                this.resetAddWorkflowModal();
+            }
+
+            resetAddWorkflowModal() {
+                this.state.modal.currentFile = null;
+                this.state.modal.analysisData = null;
+                this.state.modal.isAnalyzing = false;
+                this.state.modal.isAdding = false;
+                
+                this.elements.fileInput.value = '';
+                this.elements.analysisResult.classList.remove('active');
+                this.elements.addBtn.disabled = true;
+                this.elements.addBtnText.textContent = 'Add Workflow';
+                this.elements.addBtnSpinner.style.display = 'none';
+            }
+
+            async handleFileSelect(file) {
+                if (!file) return;
+                
+                if (!file.name.endsWith('.json')) {
+                    alert('Please select a JSON file');
+                    return;
+                }
+
+                this.state.modal.currentFile = file;
+                this.state.modal.isAnalyzing = true;
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    const response = await fetch('/api/analyze-workflow', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Analysis failed: ${response.statusText}`);
+                    }
+                    
+                    const analysisData = await response.json();
+                    
+                    if (!analysisData.success) {
+                        throw new Error(analysisData.error || 'Analysis failed');
+                    }
+                    
+                    this.state.modal.analysisData = analysisData;
+                    this.displayAnalysisResults(analysisData);
+                    this.elements.addBtn.disabled = false;
+                    
+                } catch (error) {
+                    console.error('Error analyzing workflow:', error);
+                    alert(`Error analyzing workflow: ${error.message}`);
+                } finally {
+                    this.state.modal.isAnalyzing = false;
+                }
+            }
+
+            displayAnalysisResults(data) {
+                // Populate analysis details
+                this.elements.analysisDetails.innerHTML = `
+                    <div class="analysis-item">
+                        <div class="analysis-item-label">Workflow Name</div>
+                        <div class="analysis-item-value">${data.workflow_name}</div>
+                    </div>
+                    <div class="analysis-item">
+                        <div class="analysis-item-label">Services</div>
+                        <div class="analysis-item-value">${data.services.join(', ') || 'None detected'}</div>
+                    </div>
+                    <div class="analysis-item">
+                        <div class="analysis-item-label">Purpose</div>
+                        <div class="analysis-item-value">${data.purpose}</div>
+                    </div>
+                    <div class="analysis-item">
+                        <div class="analysis-item-label">Trigger Type</div>
+                        <div class="analysis-item-value">${data.trigger_type}</div>
+                    </div>
+                    <div class="analysis-item">
+                        <div class="analysis-item-label">Nodes</div>
+                        <div class="analysis-item-value">${data.node_count} (${data.analysis.complexity})</div>
+                    </div>
+                    <div class="analysis-item">
+                        <div class="analysis-item-label">Number</div>
+                        <div class="analysis-item-value">${data.next_number.toString().padStart(4, '0')}</div>
+                    </div>
+                `;
+                
+                // Show suggested filename
+                this.elements.suggestedFilename.textContent = data.suggested_filename;
+                
+                // Show analysis result
+                this.elements.analysisResult.classList.add('active');
+            }
+
+            async addWorkflowToRepository() {
+                if (!this.state.modal.currentFile || !this.state.modal.analysisData) {
+                    return;
+                }
+
+                this.state.modal.isAdding = true;
+                this.elements.addBtn.disabled = true;
+                this.elements.addBtnText.textContent = 'Adding...';
+                this.elements.addBtnSpinner.style.display = 'inline-block';
+
+                try {
+                    const formData = new FormData();
+                    formData.append('file', this.state.modal.currentFile);
+                    
+                    const response = await fetch('/api/add-workflow', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Failed to add workflow: ${response.statusText}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        throw new Error(result.error || 'Failed to add workflow');
+                    }
+                    
+                    // Success! Close modal and refresh
+                    this.closeAddWorkflowModal();
+                    
+                    // Show success message
+                    alert(`Workflow successfully added as: ${result.target_filename}`);
+                    
+                    // Refresh the workflow list
+                    this.state.currentPage = 1;
+                    await this.loadWorkflows(true);
+                    
+                } catch (error) {
+                    console.error('Error adding workflow:', error);
+                    alert(`Error adding workflow: ${error.message}`);
+                } finally {
+                    this.state.modal.isAdding = false;
+                    this.elements.addBtn.disabled = false;
+                    this.elements.addBtnText.textContent = 'Add Workflow';
+                    this.elements.addBtnSpinner.style.display = 'none';
+                }
+            }
+
             resetCopyButton(buttonId) {
                 const button = document.getElementById(buttonId);
                 if (!button) return;
@@ -1248,5 +1707,45 @@
             window.workflowApp = new WorkflowApp();
         });
     </script>
+
+    <!-- Add Workflow Modal -->
+    <div id="addWorkflowModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Add New Workflow</h2>
+                <button class="modal-close" id="modalClose">×</button>
+            </div>
+            
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Drag & drop your workflow JSON file here</div>
+                <div class="upload-hint">or click to browse files</div>
+                <input type="file" id="fileInput" class="file-input" accept=".json">
+            </div>
+            
+            <div class="analysis-result" id="analysisResult">
+                <div class="analysis-header">
+                    <div class="analysis-icon">🔍</div>
+                    <div class="analysis-title">Workflow Analysis</div>
+                </div>
+                
+                <div class="analysis-details" id="analysisDetails">
+                    <!-- Analysis details will be populated here -->
+                </div>
+                
+                <div class="suggested-filename" id="suggestedFilename">
+                    <!-- Suggested filename will be shown here -->
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                <button class="btn btn-primary" id="addBtn" disabled>
+                    <span id="addBtnText">Add Workflow</span>
+                    <span class="loading-spinner" id="addBtnSpinner" style="display: none;"></span>
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

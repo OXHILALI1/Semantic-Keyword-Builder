@@ -4,7 +4,7 @@ FastAPI Server for N8N Workflow Documentation
 High-performance API with sub-100ms response times.
 """
 
-from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,10 +14,14 @@ from typing import Optional, List, Dict, Any
 import json
 import os
 import asyncio
+import tempfile
+import shutil
 from pathlib import Path
 import uvicorn
 
 from workflow_db import WorkflowDatabase
+from new_workflow_analyzer import NewWorkflowAnalyzer
+from auto_add_workflow import AutoWorkflowAdder
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -83,6 +87,27 @@ class StatsResponse(BaseModel):
     total_nodes: int
     unique_integrations: int
     last_indexed: str
+
+class WorkflowAnalysisResponse(BaseModel):
+    success: bool
+    original_filename: str
+    suggested_filename: str
+    workflow_name: str
+    services: List[str]
+    purpose: str
+    trigger_type: str
+    node_count: int
+    next_number: int
+    analysis: Dict[str, Any]
+    error: Optional[str] = None
+
+class WorkflowAddResponse(BaseModel):
+    success: bool
+    action: str
+    source_filename: str
+    target_filename: Optional[str] = None
+    target_path: Optional[str] = None
+    error: Optional[str] = None
 
 @app.get("/")
 async def root():
@@ -326,6 +351,123 @@ async def get_integrations():
         return {"integrations": [], "count": stats['unique_integrations']}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching integrations: {str(e)}")
+
+@app.post("/api/analyze-workflow", response_model=WorkflowAnalysisResponse)
+async def analyze_workflow(file: UploadFile = File(...)):
+    """Analyze uploaded workflow file and suggest proper naming."""
+    if not file.filename.endswith('.json'):
+        raise HTTPException(status_code=400, detail="File must be a JSON file")
+    
+    try:
+        # Create temporary file
+        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.json') as temp_file:
+            content = await file.read()
+            temp_file.write(content)
+            temp_file_path = temp_file.name
+        
+        # Analyze workflow
+        analyzer = NewWorkflowAnalyzer()
+        result = analyzer.analyze_workflow_file(temp_file_path)
+        
+        # Clean up temp file
+        os.unlink(temp_file_path)
+        
+        if not result['success']:
+            return WorkflowAnalysisResponse(
+                success=False,
+                original_filename=file.filename,
+                suggested_filename="",
+                workflow_name="",
+                services=[],
+                purpose="",
+                trigger_type="",
+                node_count=0,
+                next_number=0,
+                analysis={},
+                error=result['error']
+            )
+        
+        return WorkflowAnalysisResponse(**result)
+        
+    except Exception as e:
+        # Clean up temp file if it exists
+        if 'temp_file_path' in locals():
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
+        raise HTTPException(status_code=500, detail=f"Error analyzing workflow: {str(e)}")
+
+@app.post("/api/add-workflow", response_model=WorkflowAddResponse)
+async def add_workflow(
+    file: UploadFile = File(...),
+    auto_confirm: bool = True,
+    background_tasks: BackgroundTasks = BackgroundTasks()
+):
+    """Add uploaded workflow file to repository with proper naming."""
+    if not file.filename.endswith('.json'):
+        raise HTTPException(status_code=400, detail="File must be a JSON file")
+    
+    try:
+        # Create temporary file
+        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.json') as temp_file:
+            content = await file.read()
+            temp_file.write(content)
+            temp_file_path = temp_file.name
+        
+        # Add workflow
+        adder = AutoWorkflowAdder()
+        result = adder.add_workflow(temp_file_path, auto_confirm=auto_confirm, dry_run=False)
+        
+        # Clean up temp file
+        os.unlink(temp_file_path)
+        
+        if result['success']:
+            # Trigger database reindex in background
+            def reindex_db():
+                try:
+                    db.index_all_workflows(force_reindex=False)
+                except Exception as e:
+                    print(f"Error reindexing after workflow addition: {e}")
+            
+            background_tasks.add_task(reindex_db)
+            
+            return WorkflowAddResponse(
+                success=True,
+                action=result['action'],
+                source_filename=file.filename,
+                target_filename=result.get('target_file'),
+                target_path=result.get('target_path')
+            )
+        else:
+            return WorkflowAddResponse(
+                success=False,
+                action="failed",
+                source_filename=file.filename,
+                error=result['error']
+            )
+        
+    except Exception as e:
+        # Clean up temp file if it exists
+        if 'temp_file_path' in locals():
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
+        raise HTTPException(status_code=500, detail=f"Error adding workflow: {str(e)}")
+
+@app.get("/api/workflow-stats")
+async def get_workflow_addition_stats():
+    """Get statistics for workflow addition (next number, etc.)."""
+    try:
+        analyzer = NewWorkflowAnalyzer()
+        return {
+            "next_available_number": analyzer.next_number,
+            "total_existing": len(analyzer.existing_numbers),
+            "last_number": max(analyzer.existing_numbers) if analyzer.existing_numbers else 0
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching workflow stats: {str(e)}")
 
 # Custom exception handler for better error responses
 @app.exception_handler(Exception)
