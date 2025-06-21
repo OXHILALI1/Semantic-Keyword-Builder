@@ -10,8 +10,9 @@ import os
 import glob
 import datetime
 import hashlib
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional, Tuple, Set as TypingSet
 from pathlib import Path
+from shared_utils import get_clean_service_name
 
 class WorkflowDatabase:
     """High-performance SQLite database for workflow metadata and search."""
@@ -23,80 +24,79 @@ class WorkflowDatabase:
     
     def init_database(self):
         """Initialize SQLite database with optimized schema and indexes."""
-        conn = sqlite3.connect(self.db_path)
-        conn.execute("PRAGMA journal_mode=WAL")  # Write-ahead logging for performance
-        conn.execute("PRAGMA synchronous=NORMAL")
-        conn.execute("PRAGMA cache_size=10000")
-        conn.execute("PRAGMA temp_store=MEMORY")
-        
-        # Create main workflows table
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS workflows (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                filename TEXT UNIQUE NOT NULL,
-                name TEXT NOT NULL,
-                workflow_id TEXT,
-                active BOOLEAN DEFAULT 0,
-                description TEXT,
-                trigger_type TEXT,
-                complexity TEXT,
-                node_count INTEGER DEFAULT 0,
-                integrations TEXT,  -- JSON array
-                tags TEXT,         -- JSON array
-                created_at TEXT,
-                updated_at TEXT,
-                file_hash TEXT,
-                file_size INTEGER,
-                analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        # Create FTS5 table for full-text search
-        conn.execute("""
-            CREATE VIRTUAL TABLE IF NOT EXISTS workflows_fts USING fts5(
-                filename,
-                name,
-                description,
-                integrations,
-                tags,
-                content=workflows,
-                content_rowid=id
-            )
-        """)
-        
-        # Create indexes for fast filtering
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_trigger_type ON workflows(trigger_type)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_complexity ON workflows(complexity)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_active ON workflows(active)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_node_count ON workflows(node_count)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_filename ON workflows(filename)")
-        
-        # Create triggers to keep FTS table in sync
-        conn.execute("""
-            CREATE TRIGGER IF NOT EXISTS workflows_ai AFTER INSERT ON workflows BEGIN
-                INSERT INTO workflows_fts(rowid, filename, name, description, integrations, tags)
-                VALUES (new.id, new.filename, new.name, new.description, new.integrations, new.tags);
-            END
-        """)
-        
-        conn.execute("""
-            CREATE TRIGGER IF NOT EXISTS workflows_ad AFTER DELETE ON workflows BEGIN
-                INSERT INTO workflows_fts(workflows_fts, rowid, filename, name, description, integrations, tags)
-                VALUES ('delete', old.id, old.filename, old.name, old.description, old.integrations, old.tags);
-            END
-        """)
-        
-        conn.execute("""
-            CREATE TRIGGER IF NOT EXISTS workflows_au AFTER UPDATE ON workflows BEGIN
-                INSERT INTO workflows_fts(workflows_fts, rowid, filename, name, description, integrations, tags)
-                VALUES ('delete', old.id, old.filename, old.name, old.description, old.integrations, old.tags);
-                INSERT INTO workflows_fts(rowid, filename, name, description, integrations, tags)
-                VALUES (new.id, new.filename, new.name, new.description, new.integrations, new.tags);
-            END
-        """)
-        
-        conn.commit()
-        conn.close()
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("PRAGMA journal_mode=WAL")  # Write-ahead logging for performance
+            conn.execute("PRAGMA synchronous=NORMAL")
+            conn.execute("PRAGMA cache_size=10000")
+            conn.execute("PRAGMA temp_store=MEMORY")
+
+            # Create main workflows table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS workflows (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    filename TEXT UNIQUE NOT NULL,
+                    name TEXT NOT NULL,
+                    workflow_id TEXT,
+                    active BOOLEAN DEFAULT 0,
+                    description TEXT,
+                    trigger_type TEXT,
+                    complexity TEXT,
+                    node_count INTEGER DEFAULT 0,
+                    integrations TEXT,  -- JSON array
+                    tags TEXT,         -- JSON array
+                    created_at TEXT,
+                    updated_at TEXT,
+                    file_hash TEXT,
+                    file_size INTEGER,
+                    analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            # Create FTS5 table for full-text search
+            conn.execute("""
+                CREATE VIRTUAL TABLE IF NOT EXISTS workflows_fts USING fts5(
+                    filename,
+                    name,
+                    description,
+                    integrations,
+                    tags,
+                    content=workflows,
+                    content_rowid=id
+                )
+            """)
+
+            # Create indexes for fast filtering
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_trigger_type ON workflows(trigger_type)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_complexity ON workflows(complexity)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_active ON workflows(active)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_node_count ON workflows(node_count)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_filename ON workflows(filename)")
+
+            # Create triggers to keep FTS table in sync
+            conn.execute("""
+                CREATE TRIGGER IF NOT EXISTS workflows_ai AFTER INSERT ON workflows BEGIN
+                    INSERT INTO workflows_fts(rowid, filename, name, description, integrations, tags)
+                    VALUES (new.id, new.filename, new.name, new.description, new.integrations, new.tags);
+                END
+            """)
+
+            conn.execute("""
+                CREATE TRIGGER IF NOT EXISTS workflows_ad AFTER DELETE ON workflows BEGIN
+                    INSERT INTO workflows_fts(workflows_fts, rowid, filename, name, description, integrations, tags)
+                    VALUES ('delete', old.id, old.filename, old.name, old.description, old.integrations, old.tags);
+                END
+            """)
+
+            conn.execute("""
+                CREATE TRIGGER IF NOT EXISTS workflows_au AFTER UPDATE ON workflows BEGIN
+                    INSERT INTO workflows_fts(workflows_fts, rowid, filename, name, description, integrations, tags)
+                    VALUES ('delete', old.id, old.filename, old.name, old.description, old.integrations, old.tags);
+                    INSERT INTO workflows_fts(rowid, filename, name, description, integrations, tags)
+                    VALUES (new.id, new.filename, new.name, new.description, new.integrations, new.tags);
+                END
+            """)
+
+            conn.commit()
     
     def get_file_hash(self, file_path: str) -> str:
         """Get MD5 hash of file for change detection."""
@@ -157,10 +157,10 @@ class WorkflowDatabase:
         
         return workflow
     
-    def analyze_nodes(self, nodes: List[Dict]) -> Tuple[str, set]:
+    def analyze_nodes(self, nodes: List[Dict]) -> Tuple[str, TypingSet[str]]:
         """Analyze nodes to determine trigger type and integrations."""
         trigger_type = 'Manual'
-        integrations = set()
+        integrations: TypingSet[str] = set()
         
         for node in nodes:
             node_type = node.get('type', '')
@@ -177,10 +177,12 @@ class WorkflowDatabase:
             
             # Extract integrations
             if node_type.startswith('n8n-nodes-base.'):
-                service = node_type.replace('n8n-nodes-base.', '')
-                service = service.replace('Trigger', '').replace('trigger', '')
-                if service and service not in ['set', 'function', 'if', 'switch', 'merge', 'stickyNote']:
-                    integrations.add(service.title())
+                service_raw = node_type.replace('n8n-nodes-base.', '')
+                service_raw = service_raw.replace('Trigger', '').replace('trigger', '') # Keep this
+
+                cleaned_service = get_clean_service_name(service_raw)
+                if cleaned_service:
+                    integrations.add(cleaned_service)
         
         # Determine if complex based on node variety and count
         if len(nodes) > 10 and len(integrations) > 3:
@@ -248,66 +250,65 @@ class WorkflowDatabase:
         
         print(f"Indexing {len(json_files)} workflow files...")
         
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        
         stats = {'processed': 0, 'skipped': 0, 'errors': 0}
         
-        for file_path in json_files:
-            filename = os.path.basename(file_path)
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
             
-            try:
-                # Check if file needs to be reprocessed
-                if not force_reindex:
-                    current_hash = self.get_file_hash(file_path)
-                    cursor = conn.execute(
-                        "SELECT file_hash FROM workflows WHERE filename = ?", 
-                        (filename,)
-                    )
-                    row = cursor.fetchone()
-                    if row and row['file_hash'] == current_hash:
-                        stats['skipped'] += 1
-                        continue
+            for file_path in json_files:
+                filename = os.path.basename(file_path)
                 
-                # Analyze workflow
-                workflow_data = self.analyze_workflow_file(file_path)
-                if not workflow_data:
+                try:
+                    # Check if file needs to be reprocessed
+                    if not force_reindex:
+                        current_hash = self.get_file_hash(file_path)
+                        cursor = conn.execute(
+                            "SELECT file_hash FROM workflows WHERE filename = ?",
+                            (filename,)
+                        )
+                        row = cursor.fetchone()
+                        if row and row['file_hash'] == current_hash:
+                            stats['skipped'] += 1
+                            continue
+
+                    # Analyze workflow
+                    workflow_data = self.analyze_workflow_file(file_path)
+                    if not workflow_data:
+                        stats['errors'] += 1
+                        continue
+
+                    # Insert or update in database
+                    conn.execute("""
+                        INSERT OR REPLACE INTO workflows (
+                            filename, name, workflow_id, active, description, trigger_type,
+                            complexity, node_count, integrations, tags, created_at, updated_at,
+                            file_hash, file_size, analyzed_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    """, (
+                        workflow_data['filename'],
+                        workflow_data['name'],
+                        workflow_data['workflow_id'],
+                        workflow_data['active'],
+                        workflow_data['description'],
+                        workflow_data['trigger_type'],
+                        workflow_data['complexity'],
+                        workflow_data['node_count'],
+                        json.dumps(workflow_data['integrations']),
+                        json.dumps(workflow_data['tags']),
+                        workflow_data['created_at'],
+                        workflow_data['updated_at'],
+                        workflow_data['file_hash'],
+                        workflow_data['file_size']
+                    ))
+
+                    stats['processed'] += 1
+
+                except Exception as e:
+                    print(f"Error processing {file_path}: {str(e)}")
                     stats['errors'] += 1
                     continue
-                
-                # Insert or update in database
-                conn.execute("""
-                    INSERT OR REPLACE INTO workflows (
-                        filename, name, workflow_id, active, description, trigger_type,
-                        complexity, node_count, integrations, tags, created_at, updated_at,
-                        file_hash, file_size, analyzed_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                """, (
-                    workflow_data['filename'],
-                    workflow_data['name'],
-                    workflow_data['workflow_id'],
-                    workflow_data['active'],
-                    workflow_data['description'],
-                    workflow_data['trigger_type'],
-                    workflow_data['complexity'],
-                    workflow_data['node_count'],
-                    json.dumps(workflow_data['integrations']),
-                    json.dumps(workflow_data['tags']),
-                    workflow_data['created_at'],
-                    workflow_data['updated_at'],
-                    workflow_data['file_hash'],
-                    workflow_data['file_size']
-                ))
-                
-                stats['processed'] += 1
-                
-            except Exception as e:
-                print(f"Error processing {file_path}: {str(e)}")
-                stats['errors'] += 1
-                continue
-        
-        conn.commit()
-        conn.close()
+
+            conn.commit()
         
         print(f"✅ Indexing complete: {stats['processed']} processed, {stats['skipped']} skipped, {stats['errors']} errors")
         return stats
@@ -316,11 +317,11 @@ class WorkflowDatabase:
                         complexity_filter: str = "all", active_only: bool = False,
                         limit: int = 50, offset: int = 0) -> Tuple[List[Dict], int]:
         """Fast search with filters and pagination."""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        
-        # Build WHERE clause
-        where_conditions = []
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+
+            # Build WHERE clause
+            where_conditions = []
         params = []
         
         if active_only:
@@ -343,7 +344,10 @@ class WorkflowDatabase:
                 JOIN workflows w ON w.id = fts.rowid
                 WHERE workflows_fts MATCH ?
             """
-            params.insert(0, query)
+            # Sanitize the query for FTS by treating it as a single phrase.
+            # This escapes double quotes within the query and wraps the whole query in double quotes.
+            sanitized_query = f'"{query.replace(""", """")}"'
+            params.insert(0, sanitized_query)
         else:
             # Regular query without FTS
             base_query = """
@@ -390,16 +394,15 @@ class WorkflowDatabase:
             
             results.append(workflow)
         
-        conn.close()
         return results, total
     
     def get_stats(self) -> Dict[str, Any]:
         """Get database statistics."""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        
-        # Basic counts
-        cursor = conn.execute("SELECT COUNT(*) as total FROM workflows")
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+
+            # Basic counts
+            cursor = conn.execute("SELECT COUNT(*) as total FROM workflows")
         total = cursor.fetchone()['total']
         
         cursor = conn.execute("SELECT COUNT(*) as active FROM workflows WHERE active = 1")
@@ -431,8 +434,6 @@ class WorkflowDatabase:
         for row in cursor.fetchall():
             integrations = json.loads(row['integrations'])
             all_integrations.update(integrations)
-        
-        conn.close()
         
         return {
             'total': total,

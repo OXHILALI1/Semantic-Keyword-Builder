@@ -10,6 +10,7 @@ import glob
 import re
 from typing import Dict, List, Any, Optional, Tuple, Set
 from pathlib import Path
+from shared_utils import get_clean_service_name
 
 class NewWorkflowAnalyzer:
     """Analyzes new workflow files and suggests proper naming convention."""
@@ -103,65 +104,12 @@ class NewWorkflowAnalyzer:
             
             # Extract service names
             if node_type.startswith('n8n-nodes-base.'):
-                service = node_type.replace('n8n-nodes-base.', '')
-                service = service.replace('Trigger', '').replace('trigger', '')
-                
-                # Clean up service names with comprehensive mapping
-                service_mapping = {
-                    'webhook': 'Webhook',
-                    'httpRequest': 'HTTP',
-                    'cron': 'Cron',
-                    'gmail': 'Gmail',
-                    'slack': 'Slack',
-                    'googleSheets': 'GoogleSheets',
-                    'airtable': 'Airtable',
-                    'notion': 'Notion',
-                    'telegram': 'Telegram',
-                    'discord': 'Discord',
-                    'twitter': 'Twitter',
-                    'github': 'GitHub',
-                    'hubspot': 'HubSpot',
-                    'salesforce': 'Salesforce',
-                    'stripe': 'Stripe',
-                    'shopify': 'Shopify',
-                    'trello': 'Trello',
-                    'asana': 'Asana',
-                    'clickup': 'ClickUp',
-                    'calendly': 'Calendly',
-                    'zoom': 'Zoom',
-                    'mattermost': 'Mattermost',
-                    'microsoftTeams': 'Teams',
-                    'googleCalendar': 'GoogleCalendar',
-                    'googleDrive': 'GoogleDrive',
-                    'dropbox': 'Dropbox',
-                    'onedrive': 'OneDrive',
-                    'aws': 'AWS',
-                    'azure': 'Azure',
-                    'googleCloud': 'GCP',
-                    'postgresql': 'PostgreSQL',
-                    'mysql': 'MySQL',
-                    'mongodb': 'MongoDB',
-                    'redis': 'Redis',
-                    'elasticsearch': 'Elasticsearch',
-                    'typeform': 'Typeform',
-                    'mailchimp': 'Mailchimp',
-                    'sendgrid': 'SendGrid',
-                    'twilio': 'Twilio',
-                    'openai': 'OpenAI',
-                    'anthropic': 'Anthropic',
-                    'replicate': 'Replicate'
-                }
-                
-                clean_service = service_mapping.get(service.lower(), service.title())
-                
-                # Skip utility nodes
-                utility_nodes = {
-                    'Set', 'Function', 'If', 'Switch', 'Merge', 'StickyNote', 
-                    'NoOp', 'Code', 'Execute', 'Split', 'Wait', 'Stop'
-                }
-                
-                if clean_service not in utility_nodes:
-                    services.add(clean_service)
+                service_raw = node_type.replace('n8n-nodes-base.', '')
+                service_raw = service_raw.replace('Trigger', '').replace('trigger', '') # Keep this initial raw cleaning
+
+                cleaned_service = get_clean_service_name(service_raw)
+                if cleaned_service:
+                    services.add(cleaned_service)
         
         return services, trigger_type
     

@@ -9,7 +9,7 @@ import os
 import shutil
 import argparse
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from new_workflow_analyzer import NewWorkflowAnalyzer
 
 class AutoWorkflowAdder:
@@ -21,14 +21,35 @@ class AutoWorkflowAdder:
         
         # Ensure workflows directory exists
         os.makedirs(workflows_dir, exist_ok=True)
+
+    @classmethod
+    def _validate_workflow_file(cls, file_path: str) -> Optional[Dict[str, Any]]:
+        """Validate a single workflow JSON file."""
+        if not os.path.exists(file_path):
+            return {'success': False, 'error': f"File '{file_path}' not found."}
+
+        if not file_path.endswith('.json'):
+            return {'success': False, 'error': f"File '{file_path}' is not a JSON file."}
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            if 'nodes' not in data or 'connections' not in data:
+                return {'success': False, 'error': f"File '{file_path}' is not a valid workflow file (missing 'nodes' or 'connections')."}
+        except FileNotFoundError: # Should be caught by os.path.exists, but good for robustness
+             return {'success': False, 'error': f"File '{file_path}' not found during read attempt."}
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            return {'success': False, 'error': f"Error decoding JSON from '{file_path}': {str(e)}"}
+        except Exception as e:
+            return {'success': False, 'error': f"Error reading file '{file_path}': {str(e)}"}
+
+        return None # All checks passed
     
     def add_workflow(self, source_file: str, auto_confirm: bool = False, dry_run: bool = False) -> Dict[str, Any]:
         """Add a new workflow to the repository with proper naming."""
-        if not os.path.exists(source_file):
-            return {
-                'success': False,
-                'error': f"Source file '{source_file}' not found."
-            }
+        validation_result = self._validate_workflow_file(source_file)
+        if validation_result:
+            return validation_result
         
         # Analyze the workflow
         analysis = self.analyzer.analyze_workflow_file(source_file)
@@ -164,22 +185,35 @@ class AutoWorkflowAdder:
             return pending
         
         # Find all JSON files in the directory
-        for file_path in Path(directory).glob("*.json"):
-            filename = file_path.name
+        for file_path_obj in Path(directory).glob("*.json"):
+            file_path = str(file_path_obj)
+            filename = file_path_obj.name
             
             # Skip files that look like they're already properly named
             if not filename.startswith(('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')):
-                # Check if it's a valid workflow file
-                try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
-                        data = json.load(f)
-                        if 'nodes' in data and 'connections' in data:
-                            pending.append(str(file_path))
-                except:
-                    continue  # Skip invalid JSON files
+                validation_result = self._validate_workflow_file(file_path)
+                if validation_result is None: # File is valid
+                    pending.append(file_path)
+                # else: # Optionally log validation_result['error'] if needed
+                #     print(f"Skipping invalid file {filename}: {validation_result['error']}")
         
         return pending
 
+def _validate_multiple_workflow_files_for_cli(file_paths: List[str], adder_class: type) -> bool:
+    """Validate multiple workflow files and print errors if any."""
+    all_valid = True
+    error_messages = []
+    for fp in file_paths:
+        validation_result = adder_class._validate_workflow_file(fp)
+        if validation_result:
+            all_valid = False
+            error_messages.append(validation_result['error'])
+
+    if not all_valid:
+        print("❌ Error: The following file issues were found:")
+        for error in error_messages:
+            print(f"   - {error}")
+    return all_valid
 
 def main():
     """Main execution function."""
@@ -233,12 +267,7 @@ def main():
         parser.print_help()
         return 1
     
-    # Check if all files exist
-    missing_files = [f for f in args.files if not os.path.exists(f)]
-    if missing_files:
-        print(f"❌ Error: The following files were not found:")
-        for f in missing_files:
-            print(f"   - {f}")
+    if not _validate_multiple_workflow_files_for_cli(args.files, AutoWorkflowAdder):
         return 1
     
     # Process files

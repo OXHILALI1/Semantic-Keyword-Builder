@@ -18,6 +18,8 @@ import tempfile
 import shutil
 from pathlib import Path
 import uvicorn
+import threading
+import logging
 
 from workflow_db import WorkflowDatabase
 from new_workflow_analyzer import NewWorkflowAnalyzer
@@ -47,6 +49,10 @@ app.add_middleware(
 
 # Initialize database
 db = WorkflowDatabase()
+
+# Lock and flag for reindexing
+reindex_lock = threading.Lock()
+is_reindexing_flag = False
 
 # Response models
 class WorkflowSummary(BaseModel):
@@ -352,11 +358,34 @@ def generate_mermaid_diagram(nodes: List[Dict], connections: Dict) -> str:
 @app.post("/api/reindex")
 async def reindex_workflows(background_tasks: BackgroundTasks, force: bool = False):
     """Trigger workflow reindexing in the background."""
-    def run_indexing():
-        db.index_all_workflows(force_reindex=force)
+    global is_reindexing_flag
     
-    background_tasks.add_task(run_indexing)
-    return {"message": "Reindexing started in background"}
+    if is_reindexing_flag: # Quick check without lock
+        return JSONResponse(
+            status_code=409,
+            content={"message": "Reindexing already in progress."}
+        )
+
+    with reindex_lock:
+        if is_reindexing_flag: # Double check after acquiring lock
+            return JSONResponse(
+                status_code=409,
+                content={"message": "Reindexing already in progress."}
+            )
+        is_reindexing_flag = True
+
+    def run_indexing_task():
+        global is_reindexing_flag
+        try:
+            db.index_all_workflows(force_reindex=force)
+        except Exception as e:
+            print(f"Error during background reindexing: {e}") # Log error
+        finally:
+            with reindex_lock: # Ensure status flag update is atomic
+                is_reindexing_flag = False
+
+    background_tasks.add_task(run_indexing_task)
+    return {"message": "Reindexing started in background."}
 
 @app.get("/api/integrations")
 async def get_integrations():
@@ -373,20 +402,24 @@ async def analyze_workflow(file: UploadFile = File(...)):
     """Analyze uploaded workflow file and suggest proper naming."""
     if not file.filename.endswith('.json'):
         raise HTTPException(status_code=400, detail="File must be a JSON file")
-    
+
+    temp_file_path = None  # Initialize to None
     try:
         # Create temporary file
         with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.json') as temp_file:
             content = await file.read()
             temp_file.write(content)
-            temp_file_path = temp_file.name
-        
-        # Analyze workflow
+            temp_file_path = temp_file.name # temp_file is closed here, path is valid
+
+        # Ensure temp_file_path was set before proceeding
+        if temp_file_path is None:
+            # This case should ideally not be reached if NamedTemporaryFile succeeds
+            logging.error("Failed to create temporary file for analysis, temp_file_path is None.")
+            raise HTTPException(status_code=500, detail="Failed to create temporary file.")
+
+        # Analyze workflow using the temp_file_path
         analyzer = NewWorkflowAnalyzer()
         result = analyzer.analyze_workflow_file(temp_file_path)
-        
-        # Clean up temp file
-        os.unlink(temp_file_path)
         
         if not result['success']:
             return WorkflowAnalysisResponse(
@@ -400,19 +433,25 @@ async def analyze_workflow(file: UploadFile = File(...)):
                 node_count=0,
                 next_number=0,
                 analysis={},
-                error=result['error']
+                error=result.get('error', 'Analysis failed')
             )
         
         return WorkflowAnalysisResponse(**result)
-        
+
     except Exception as e:
-        # Clean up temp file if it exists
-        if 'temp_file_path' in locals():
+        # The global exception handler will catch this and log str(e).
+        # Specific logging for this endpoint context can be added if desired,
+        # but the primary goal here is robust cleanup.
+        raise HTTPException(status_code=500, detail=f"Error analyzing workflow: {str(e)}")
+
+    finally:
+        if temp_file_path and os.path.exists(temp_file_path):
             try:
                 os.unlink(temp_file_path)
-            except:
-                pass
-        raise HTTPException(status_code=500, detail=f"Error analyzing workflow: {str(e)}")
+                logging.info(f"Successfully deleted temporary file: {temp_file_path}")
+            except OSError as unlink_error:
+                # Log the error during cleanup
+                logging.error(f"Failed to delete temporary file {temp_file_path}: {unlink_error}", exc_info=True)
 
 @app.post("/api/add-workflow", response_model=WorkflowAddResponse)
 async def add_workflow(
@@ -423,30 +462,50 @@ async def add_workflow(
     """Add uploaded workflow file to repository with proper naming."""
     if not file.filename.endswith('.json'):
         raise HTTPException(status_code=400, detail="File must be a JSON file")
-    
+
+    temp_file_path = None # Initialize
     try:
         # Create temporary file
         with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.json') as temp_file:
             content = await file.read()
             temp_file.write(content)
             temp_file_path = temp_file.name
-        
-        # Add workflow
+
+        if temp_file_path is None:
+            logging.error("Failed to create temporary file for add, temp_file_path is None.")
+            raise HTTPException(status_code=500, detail="Failed to create temporary file for add.")
+
+        # Add workflow using the temp_file_path
         adder = AutoWorkflowAdder()
         result = adder.add_workflow(temp_file_path, auto_confirm=auto_confirm, dry_run=False)
         
-        # Clean up temp file
-        os.unlink(temp_file_path)
-        
         if result['success']:
             # Trigger database reindex in background
-            def reindex_db():
+            def reindex_db_task(): # Renamed to avoid confusion
+                global is_reindexing_flag # Ensure it's the global flag
+
+                # Check if reindexing is already scheduled or running
+                if is_reindexing_flag:
+                     print("Reindex after add_workflow: Already in progress or scheduled. Skipping.")
+                     return
+
+                with reindex_lock: # Acquire lock to check and set flag
+                    if is_reindexing_flag:
+                        print("Reindex after add_workflow: Lock acquired, but flag was already true. Skipping.")
+                        return # Another task just set it
+                    is_reindexing_flag = True
+
                 try:
+                    print("Reindex after add_workflow: Starting actual indexing.")
                     db.index_all_workflows(force_reindex=False)
                 except Exception as e:
                     print(f"Error reindexing after workflow addition: {e}")
-            
-            background_tasks.add_task(reindex_db)
+                finally:
+                    with reindex_lock: # Acquire lock to reset flag
+                        is_reindexing_flag = False
+                        print("Reindex after add_workflow: Indexing finished, flag reset.")
+
+            background_tasks.add_task(reindex_db_task)
             
             return WorkflowAddResponse(
                 success=True,
@@ -460,17 +519,20 @@ async def add_workflow(
                 success=False,
                 action="failed",
                 source_filename=file.filename,
-                error=result['error']
+                error=result.get('error', 'Failed to add workflow')
             )
-        
+
     except Exception as e:
-        # Clean up temp file if it exists
-        if 'temp_file_path' in locals():
+        # Global exception handler will log this.
+        raise HTTPException(status_code=500, detail=f"Error adding workflow: {str(e)}")
+
+    finally:
+        if temp_file_path and os.path.exists(temp_file_path):
             try:
                 os.unlink(temp_file_path)
-            except:
-                pass
-        raise HTTPException(status_code=500, detail=f"Error adding workflow: {str(e)}")
+                logging.info(f"Successfully deleted temporary file after add: {temp_file_path}")
+            except OSError as unlink_error:
+                logging.error(f"Failed to delete temporary file {temp_file_path} after add: {unlink_error}", exc_info=True)
 
 @app.get("/api/workflow-stats")
 async def get_workflow_addition_stats():
@@ -493,9 +555,13 @@ async def get_workflow_addition_stats():
 # Custom exception handler for better error responses
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
+    # Log the full exception details to the server console/logs
+    logging.error(f"Unhandled exception during request to {request.url.path}: {exc}", exc_info=True)
+
+    # Return a generic error message to the client
     return JSONResponse(
         status_code=500,
-        content={"detail": f"Internal server error: {str(exc)}"}
+        content={"detail": "An unexpected internal server error occurred. Please try again later or contact support if the issue persists."}
     )
 
 # Mount React build files AFTER all routes are defined
