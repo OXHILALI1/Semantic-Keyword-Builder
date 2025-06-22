@@ -89,3 +89,8 @@ frontend/.vscode/
 
 # Claude Code artifacts
 .claude/
+
+# Temporary design files
+*.png
+!frontend/public/*.png
+!frontend/src/assets/*.png
