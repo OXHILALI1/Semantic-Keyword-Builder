@@ -36,9 +36,10 @@ const WorkflowGrid: React.FC<WorkflowGridProps> = ({
   return (
     <div style={{ 
       display: 'grid', 
-      gridTemplateColumns: 'repeat(4, 1fr)', 
+      gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 280px))', 
       gap: '24px', 
-      marginBottom: '40px'
+      marginBottom: '40px',
+      justifyContent: 'center'
     }}>
       {workflows.map((workflow) => (
         <WorkflowNode

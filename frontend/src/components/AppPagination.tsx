@@ -21,15 +21,18 @@ const AppPagination: React.FC<AppPaginationProps> = ({
       justifyContent: 'center',
       alignItems: 'center',
       gap: '10px',
-      marginBottom: '30px'
+      marginBottom: '30px',
+      margin: '0 auto 30px auto',
+      maxWidth: 'calc((280px * 5) + (24px * 4))' // Match WorkflowGrid max width: 5 nodes + 4 gaps
     }}>
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
         style={{
           padding: '8px 16px',
-          border: '1px solid #d1d5db',
-          backgroundColor: currentPage === 1 ? '#f9fafb' : 'white',
+          border: '1px solid hsl(var(--border))',
+          backgroundColor: currentPage === 1 ? 'hsl(var(--muted))' : 'hsl(var(--background))',
+          color: 'hsl(var(--foreground))',
           borderRadius: '6px',
           cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
         }}
@@ -37,7 +40,7 @@ const AppPagination: React.FC<AppPaginationProps> = ({
         Previous
       </button>
 
-      <span style={{ color: '#6b7280', margin: '0 20px' }}>
+      <span style={{ color: 'hsl(var(--muted-foreground))', margin: '0 20px' }}>
         Page {currentPage} of {totalPages}
       </span>
 
@@ -46,8 +49,9 @@ const AppPagination: React.FC<AppPaginationProps> = ({
         disabled={currentPage === totalPages}
         style={{
           padding: '8px 16px',
-          border: '1px solid #d1d5db',
-          backgroundColor: currentPage === totalPages ? '#f9fafb' : 'white',
+          border: '1px solid hsl(var(--border))',
+          backgroundColor: currentPage === totalPages ? 'hsl(var(--muted))' : 'hsl(var(--background))',
+          color: 'hsl(var(--foreground))',
           borderRadius: '6px',
           cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
         }}

@@ -71,12 +71,21 @@ build/
 TASK.md
 PAD.md
 
+# Analysis and reports (generated)
+LUCIDE_ANALYSIS.md
+REPORT.md
+
 # Design reference files
 n8n-style-*.png
 n8n-style-guide.md
 image*.png
+node.png
 
 # Frontend build artifacts
 frontend/dist/
 frontend/node_modules/
 frontend/pnpm-lock.yaml
+frontend/.vscode/
+
+# Claude Code artifacts
+.claude/

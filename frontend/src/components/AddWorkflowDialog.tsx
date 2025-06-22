@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Upload, FileText, Loader2 } from "lucide-react"
+import { Upload, FileText, Loader2 } from "../lib/icons"
 import {
   Dialog,
   DialogContent,

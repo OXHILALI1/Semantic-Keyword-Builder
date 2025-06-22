@@ -1,5 +1,5 @@
 import React from 'react';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun } from '../lib/icons';
 
 export function ThemeSwitcher() {
   const [theme, setTheme] = React.useState<'light' | 'dark'>('light');
@@ -32,13 +32,28 @@ export function ThemeSwitcher() {
   return (
     <button
       onClick={toggleTheme}
-      className="flex items-center justify-center w-10 h-10 rounded-lg hover:bg-muted transition-colors"
+      className="flex items-center justify-center transition-all duration-200"
+      style={{
+        width: '36px',
+        height: '36px',
+        borderRadius: '6px',
+        border: 'none',
+        backgroundColor: 'transparent',
+        color: 'hsl(var(--foreground))',
+        cursor: 'pointer'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.backgroundColor = 'hsl(var(--muted))';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = 'transparent';
+      }}
       title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
     >
       {theme === 'light' ? (
-        <Moon className="w-5 h-5 text-muted-foreground hover:text-turbo-teal transition-colors" />
+        <Moon className="w-5 h-5" />
       ) : (
-        <Sun className="w-5 h-5 text-apache-rose" />
+        <Sun className="w-5 h-5" />
       )}
     </button>
   );

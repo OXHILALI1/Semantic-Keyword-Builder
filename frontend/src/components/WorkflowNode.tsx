@@ -38,17 +38,50 @@ const WorkflowNode: React.FC<WorkflowNodeProps> = ({
       }}
       onClick={() => onViewDetails(workflow)}
     >
+      {/* Left Border Rectangle */}
+      <div
+        style={{
+          position: 'absolute',
+          left: '-6px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: '12px',
+          height: '24px',
+          backgroundColor: 'light-dark(#ff6b35, hsl(var(--border)))',
+          borderRadius: '3px',
+          zIndex: 10
+        }}
+      />
+
+      {/* Right Border Circle */}
+      <div
+        style={{
+          position: 'absolute',
+          right: '-8px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: '16px',
+          height: '16px',
+          backgroundColor: 'light-dark(#ff6b35, hsl(var(--border)))',
+          borderRadius: '50%',
+          zIndex: 10
+        }}
+      />
+
       {/* Header Section */}
       <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <h3 
-            className="font-heading font-semibold leading-tight mb-2"
-            style={{
-              color: 'hsl(var(--card-foreground))',
-              fontSize: '16px',
-              lineHeight: '1.4'
-            }}
-          >
+        <div style={{ flex: '1', minWidth: '0', paddingRight: '12px' }}>
+          {/* Workflow Name */}
+          <h3 style={{
+            fontWeight: '600',
+            fontSize: '16px',
+            color: 'hsl(var(--foreground))',
+            margin: '0 0 8px 0',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            width: '100%'
+          }}>
             {workflow.name}
           </h3>
           <div 
@@ -62,7 +95,7 @@ const WorkflowNode: React.FC<WorkflowNodeProps> = ({
         {/* Status Indicator Dot */}
         <div 
           className={`w-3 h-3 rounded-full ${workflow.active ? 'bg-n8n-green' : 'bg-muted-foreground/30'}`}
-          style={{ marginTop: '4px' }}
+          style={{ marginTop: '4px', flexShrink: '0' }}
         />
       </div>
 

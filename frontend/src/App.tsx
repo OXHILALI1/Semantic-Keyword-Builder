@@ -164,7 +164,7 @@ function App() {
 
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen" style={{ padding: '32px' }}>
       <div className="max-w-7xl mx-auto">
         
         <AppHeader
@@ -218,6 +218,20 @@ function App() {
           onAddWorkflow={handleAddWorkflow}
           onClearFileSelection={clearFileSelectionHandler}
         />
+
+        {/* Footer */}
+        <footer style={{
+          textAlign: 'center', 
+          padding: '40px 20px',
+          color: 'hsl(var(--muted-foreground))',
+          fontSize: '14px',
+          borderTop: '1px solid hsl(var(--border))',
+          marginTop: '60px'
+        }}>
+          <p style={{ margin: '0', lineHeight: '1.6' }}>
+            Mess Me Up Longtime License. Do with this what you will. Revamped with Cursor, Claude Code, Jules, so much effing caffeine and a ton of patience. Oh and amazing foresight to take an awesome project and make it... um...awesomer. crushed it. Enjoy. I did. xoxo
+          </p>
+        </footer>
       </div>
     </div>
   )

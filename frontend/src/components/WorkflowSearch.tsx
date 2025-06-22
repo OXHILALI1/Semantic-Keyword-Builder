@@ -18,9 +18,16 @@ const WorkflowSearch: React.FC<WorkflowSearchProps> = ({
   workflowsCount,
 }) => {
   return (
-    <>
+    <div style={{ 
+      margin: '0 auto',
+      maxWidth: 'calc((280px * 5) + (24px * 4))', // Match WorkflowGrid max width: 5 nodes + 4 gaps
+      marginBottom: '20px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'flex-end' // Align to right side
+    }}>
       {/* Search Bar */}
-      <div style={{ marginBottom: '20px' }}>
+      <div style={{ marginBottom: '20px', width: '350px', marginRight: '24px' }}>
         <input
           type="text"
           placeholder="Search workflows..."
@@ -30,15 +37,16 @@ const WorkflowSearch: React.FC<WorkflowSearchProps> = ({
             width: '100%',
             padding: '12px 16px',
             fontSize: '16px',
-            border: '1px solid #d1d5db',
+            border: '1px solid hsl(var(--border))',
             borderRadius: '8px',
-            backgroundColor: 'white'
+            backgroundColor: 'hsl(var(--background))',
+            color: 'hsl(var(--foreground))'
           }}
         />
       </div>
 
       {/* Results info */}
-      <div style={{ marginBottom: '20px', color: '#6b7280' }}>
+      <div style={{ marginBottom: '20px', color: 'hsl(var(--muted-foreground))', width: '100%', textAlign: 'left' }}>
         {isLoading ? (
           <p>Loading...</p>
         ) : (
@@ -48,7 +56,7 @@ const WorkflowSearch: React.FC<WorkflowSearchProps> = ({
           </p>
         )}
       </div>
-    </>
+    </div>
   );
 };
 
