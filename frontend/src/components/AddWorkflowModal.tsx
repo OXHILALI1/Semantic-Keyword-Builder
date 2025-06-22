@@ -1,5 +1,5 @@
 import React from 'react';
-import { WorkflowAnalysis } from '../types/workflow';
+import type { WorkflowAnalysis } from '../types/workflow';
 
 interface AddWorkflowModalProps {
   show: boolean;
@@ -30,7 +30,7 @@ const AddWorkflowModal: React.FC<AddWorkflowModalProps> = ({
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    e.currentTarget.style.borderColor = '#d1d5db';
+    e.currentTarget.style.borderColor = 'hsl(var(--border))';
     e.currentTarget.style.backgroundColor = 'transparent';
 
     const files = e.dataTransfer.files;
@@ -44,13 +44,13 @@ const AddWorkflowModal: React.FC<AddWorkflowModalProps> = ({
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    e.currentTarget.style.borderColor = '#3b82f6';
-    e.currentTarget.style.backgroundColor = '#f0f9ff';
+    e.currentTarget.style.borderColor = 'hsl(var(--primary))';
+    e.currentTarget.style.backgroundColor = 'hsl(var(--muted))';
   };
 
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    e.currentTarget.style.borderColor = '#d1d5db';
+    e.currentTarget.style.borderColor = 'hsl(var(--border))';
     e.currentTarget.style.backgroundColor = 'transparent';
   };
 
@@ -79,13 +79,16 @@ const AddWorkflowModal: React.FC<AddWorkflowModalProps> = ({
       zIndex: 1000
     }}>
       <div style={{
-        backgroundColor: 'white',
+        backgroundColor: 'hsl(var(--card))',
+        borderColor: 'hsl(var(--border))',
+        color: 'hsl(var(--card-foreground))',
         borderRadius: '12px',
         padding: '30px',
         maxWidth: '500px',
         width: '90%',
         maxHeight: '80vh',
-        overflow: 'auto'
+        overflow: 'auto',
+        border: '1px solid'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Add New Workflow</h2>
@@ -97,7 +100,7 @@ const AddWorkflowModal: React.FC<AddWorkflowModalProps> = ({
               fontSize: '24px',
               cursor: 'pointer',
               padding: '0',
-              color: '#6b7280'
+              color: 'hsl(var(--muted-foreground))'
             }}
           >
             ×
@@ -106,7 +109,7 @@ const AddWorkflowModal: React.FC<AddWorkflowModalProps> = ({
 
         {!selectedFile ? (
           <div style={{
-            border: '2px dashed #d1d5db',
+            border: '2px dashed hsl(var(--border))',
             borderRadius: '8px',
             padding: '40px',
             textAlign: 'center',
@@ -121,15 +124,15 @@ const AddWorkflowModal: React.FC<AddWorkflowModalProps> = ({
             <p style={{ fontSize: '18px', fontWeight: '600', marginBottom: '10px' }}>
               Drop your workflow file here
             </p>
-            <p style={{ color: '#6b7280' }}>
+            <p style={{ color: 'hsl(var(--muted-foreground))' }}>
               or click to browse (.json files only)
             </p>
           </div>
         ) : (
           <div>
-            <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f3f4f6', borderRadius: '8px' }}>
+            <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: 'hsl(var(--muted))', borderRadius: '8px' }}>
               <h3 style={{ fontSize: '16px', marginBottom: '10px' }}>📄 {selectedFile.name}</h3>
-              <p style={{ color: '#6b7280', fontSize: '14px' }}>
+              <p style={{ color: 'hsl(var(--muted-foreground))', fontSize: '14px' }}>
                 {(selectedFile.size / 1024).toFixed(1)} KB
               </p>
             </div>
@@ -143,7 +146,7 @@ const AddWorkflowModal: React.FC<AddWorkflowModalProps> = ({
             {analysis && (
               <div style={{ marginBottom: '20px' }}>
                 <h3 style={{ fontSize: '18px', marginBottom: '15px' }}>Analysis Results:</h3>
-                <div style={{ backgroundColor: '#f0f9ff', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
+                <div style={{ backgroundColor: 'hsl(var(--muted))', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
                   <p><strong>Suggested filename:</strong> {analysis.suggested_filename}</p>
                   <p><strong>Services:</strong> {analysis.services.join(', ')}</p>
                   <p><strong>Node count:</strong> {analysis.node_count}</p>
@@ -157,8 +160,8 @@ const AddWorkflowModal: React.FC<AddWorkflowModalProps> = ({
                 onClick={onClearFileSelection}
                 style={{
                   padding: '10px 20px',
-                  border: '1px solid #d1d5db',
-                  backgroundColor: 'white',
+                  border: '1px solid hsl(var(--border))',
+                  backgroundColor: 'hsl(var(--card))',
                   borderRadius: '6px',
                   cursor: 'pointer'
                 }}
@@ -170,8 +173,8 @@ const AddWorkflowModal: React.FC<AddWorkflowModalProps> = ({
                 disabled={isAdding || !analysis}
                 style={{
                   padding: '10px 20px',
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
+                  backgroundColor: 'hsl(var(--primary))',
+                  color: 'hsl(var(--primary-foreground))',
                   border: 'none',
                   borderRadius: '6px',
                   cursor: isAdding ? 'not-allowed' : 'pointer',

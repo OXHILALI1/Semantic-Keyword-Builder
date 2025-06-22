@@ -1,6 +1,6 @@
 import React from 'react';
-import { WorkflowSummary } from '../types/workflow';
-import WorkflowCard from './WorkflowCard';
+import type { WorkflowSummary } from '../types/workflow';
+import WorkflowNode from './WorkflowNode';
 
 interface WorkflowGridProps {
   workflows: WorkflowSummary[];
@@ -34,10 +34,15 @@ const WorkflowGrid: React.FC<WorkflowGridProps> = ({
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px', marginBottom: '30px' }}>
-      {workflows.map((workflow) => ( // Changed key to workflow.id or workflow.filename for more stability if available and unique
-        <WorkflowCard
-          key={workflow.id || workflow.filename} // Assuming filename is unique, or id if available
+    <div style={{ 
+      display: 'grid', 
+      gridTemplateColumns: 'repeat(4, 1fr)', 
+      gap: '24px', 
+      marginBottom: '40px'
+    }}>
+      {workflows.map((workflow) => (
+        <WorkflowNode
+          key={workflow.id || workflow.filename}
           workflow={workflow}
           onViewDetails={onViewDetails}
           onDownload={onDownload}

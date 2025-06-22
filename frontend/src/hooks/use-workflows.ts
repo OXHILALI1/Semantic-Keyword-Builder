@@ -1,12 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { Workflow, WorkflowStats, AddWorkflowRequest, AddWorkflowResponse, AnalyzeWorkflowResponse } from '@/types/workflow'
+import type { WorkflowSummary, WorkflowStats, AddWorkflowRequest, AddWorkflowResponse, AnalyzeWorkflowResponse } from '@/types/workflow'
 
 const API_BASE = '/api'
 
 export function useWorkflows() {
   return useQuery({
     queryKey: ['workflows'],
-    queryFn: async (): Promise<Workflow[]> => {
+    queryFn: async (): Promise<WorkflowSummary[]> => {
       const response = await fetch(`${API_BASE}/workflows`)
       if (!response.ok) {
         throw new Error('Failed to fetch workflows')

@@ -1,70 +1,161 @@
+/* Import Dom's Google Fonts - Must be at the very top */
+@import url('https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Rubik:ital,wght@0,300..900;1,300..900&family=Fira+Code:wght@300..700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    /* n8n-inspired color palette */
+    --n8n-orange: #FF6B35;
+    --n8n-green: #00D4AA;
+    --n8n-blue: #007ACC;
+    --n8n-red: #E74C3C;
+    --n8n-dark: #161616;
+    --n8n-surface: #333333;
+    --n8n-light: #FFFFFF;
+    --n8n-gray: #F5F5F5;
+    
+    /* Typography - keeping good fonts */
+    --font-pixel: 'Silkscreen', monospace;
+    --font-heading: 'Rubik', sans-serif;
+    --font-body: 'Fira Code', monospace;
+    
+    /* LIGHT MODE - n8n style */
+    --background: 0 0% 100%;      /* white #FFFFFF */
+    --foreground: 0 0% 13%;       /* dark text #212121 */
+    --card: 0 0% 96%;             /* light gray #F5F5F5 */
+    --card-foreground: 0 0% 13%;  /* dark text #212121 */
+    --popover: 0 0% 100%;         /* white #FFFFFF */
+    --popover-foreground: 0 0% 13%; /* dark text #212121 */
+    --primary: 15 100% 60%;       /* n8n orange #FF6B35 */
+    --primary-foreground: 0 0% 100%; /* white text on orange */
+    --secondary: 167 100% 42%;    /* n8n green #00D4AA */
+    --secondary-foreground: 0 0% 100%; /* white text on green */
+    --muted: 0 0% 93%;            /* light muted #EEEEEE */
+    --muted-foreground: 0 0% 40%; /* muted text #666666 */
+    --accent: 207 100% 40%;       /* n8n blue #007ACC */
+    --accent-foreground: 0 0% 100%; /* white text on blue */
+    --destructive: 4 89% 58%;     /* n8n red #E74C3C */
+    --destructive-foreground: 0 0% 100%; /* white text on red */
+    --border: 0 0% 89%;           /* light border #E3E3E3 */
+    --input: 0 0% 100%;           /* white input #FFFFFF */
+    --ring: 15 100% 60%;          /* n8n orange focus #FF6B35 */
+    --radius: 0.75rem;            /* slightly more rounded */
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
+    /* DARK MODE - n8n style */
+    --background: 0 0% 9%;        /* n8n dark #161616 */
+    --foreground: 0 0% 100%;      /* white text #FFFFFF */
+    --card: 0 0% 20%;             /* n8n surface #333333 */
+    --card-foreground: 0 0% 100%; /* white text #FFFFFF */
+    --popover: 0 0% 20%;          /* n8n surface #333333 */
+    --popover-foreground: 0 0% 100%; /* white text #FFFFFF */
+    --primary: 15 100% 60%;       /* n8n orange #FF6B35 */
+    --primary-foreground: 0 0% 100%; /* white text on orange */
+    --secondary: 167 100% 42%;    /* n8n green #00D4AA */
+    --secondary-foreground: 0 0% 100%; /* white text on green */
+    --muted: 0 0% 25%;            /* darker muted #404040 */
+    --muted-foreground: 0 0% 60%; /* lighter muted text #999999 */
+    --accent: 207 100% 40%;       /* n8n blue #007ACC */
+    --accent-foreground: 0 0% 100%; /* white text on blue */
+    --destructive: 4 89% 58%;     /* n8n red #E74C3C */
+    --destructive-foreground: 0 0% 100%; /* white text on red */
+    --border: 0 0% 30%;           /* darker border #4D4D4D */
+    --input: 0 0% 20%;            /* dark input #333333 */
+    --ring: 15 100% 60%;          /* n8n orange focus #FF6B35 */
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
     margin: 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--font-body); /* Fira Code as default */
+    /* n8n canvas dot grid background */
+    background-image: radial-gradient(rgba(0, 0, 0, 0.15) 1px, transparent 1px);
+    background-size: 20px 20px;
+    background-position: 0 0;
+  }
+  
+  .dark body {
+    /* Dark mode n8n canvas dot grid background */
+    background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+    background-position: 0 0;
   }
 }
 
-/* Custom n8n workflow theme variables */
-:root {
-  --n8n-primary: 255 109 4;
-  --n8n-secondary: 74 123 255;
-  --n8n-success: 16 185 129;
-  --n8n-warning: 245 158 11;
-  --n8n-error: 239 68 68;
+/* n8n-Style Typography & Color Utility Classes */
+@layer utilities {
+  /* Typography Classes */
+  .font-pixel {
+    font-family: var(--font-pixel);
+  }
+  
+  .font-heading {
+    font-family: var(--font-heading);
+  }
+  
+  .font-body {
+    font-family: var(--font-body);
+  }
+  
+  /* n8n Color Classes */
+  .text-n8n-orange {
+    color: var(--n8n-orange);
+  }
+  
+  .text-n8n-green {
+    color: var(--n8n-green);
+  }
+  
+  .text-n8n-blue {
+    color: var(--n8n-blue);
+  }
+  
+  .text-n8n-red {
+    color: var(--n8n-red);
+  }
+  
+  .bg-n8n-orange {
+    background-color: var(--n8n-orange);
+  }
+  
+  .bg-n8n-green {
+    background-color: var(--n8n-green);
+  }
+  
+  .bg-n8n-blue {
+    background-color: var(--n8n-blue);
+  }
+  
+  .bg-n8n-red {
+    background-color: var(--n8n-red);
+  }
+  
+  .border-n8n-orange {
+    border-color: var(--n8n-orange);
+  }
+  
+  .border-n8n-green {
+    border-color: var(--n8n-green);
+  }
+}
+
+/* Enhanced 3D Card Styles */
+.workflow-card-3d {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  will-change: transform;
+}
+
+.workflow-card-3d * {
+  will-change: transform;
 }

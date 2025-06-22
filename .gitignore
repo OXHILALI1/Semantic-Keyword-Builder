@@ -70,3 +70,13 @@ build/
 # Project management files (private working docs)
 TASK.md
 PAD.md
+
+# Design reference files
+n8n-style-*.png
+n8n-style-guide.md
+image*.png
+
+# Frontend build artifacts
+frontend/dist/
+frontend/node_modules/
+frontend/pnpm-lock.yaml

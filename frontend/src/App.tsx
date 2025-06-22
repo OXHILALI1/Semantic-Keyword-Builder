@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { WorkflowSummary, WorkflowStats, WorkflowAnalysis, SearchResponseData } from './types/workflow'
+import type { WorkflowSummary, WorkflowStats, WorkflowAnalysis, SearchResponseData } from './types/workflow'
 import AppHeader from './components/AppHeader';
 import WorkflowSearch from './components/WorkflowSearch';
 import WorkflowGrid from './components/WorkflowGrid';
@@ -162,9 +162,10 @@ function App() {
     fetchData(newPage, searchQuery);
   }, [fetchData, searchQuery]);
 
+
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', padding: '20px' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="min-h-screen p-8">
+      <div className="max-w-7xl mx-auto">
         
         <AppHeader
           stats={stats}

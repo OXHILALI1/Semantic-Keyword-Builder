@@ -1,5 +1,5 @@
 import React from 'react';
-import { WorkflowSummary } from '../types/workflow';
+import type { WorkflowSummary } from '../types/workflow';
 
 interface WorkflowDetailsModalProps {
   workflow: WorkflowSummary | null;
@@ -34,13 +34,16 @@ const WorkflowDetailsModal: React.FC<WorkflowDetailsModalProps> = ({
       zIndex: 1000
     }}>
       <div style={{
-        backgroundColor: 'white',
+        backgroundColor: 'hsl(var(--card))',
+        borderColor: 'hsl(var(--border))',
+        color: 'hsl(var(--card-foreground))',
         borderRadius: '12px',
         padding: '30px',
         maxWidth: '600px',
         width: '90%',
         maxHeight: '80vh',
-        overflow: 'auto'
+        overflow: 'auto',
+        border: '1px solid'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Workflow Details</h2>
@@ -52,7 +55,7 @@ const WorkflowDetailsModal: React.FC<WorkflowDetailsModalProps> = ({
               fontSize: '24px',
               cursor: 'pointer',
               padding: '0',
-              color: '#6b7280'
+              color: 'hsl(var(--muted-foreground))'
             }}
           >
             ×
@@ -60,7 +63,7 @@ const WorkflowDetailsModal: React.FC<WorkflowDetailsModalProps> = ({
         </div>
 
         <div style={{ marginBottom: '20px' }}>
-          <h3 style={{ fontSize: '20px', marginBottom: '15px', color: '#3b82f6' }}>
+          <h3 style={{ fontSize: '20px', marginBottom: '15px', color: 'hsl(var(--primary))' }}>
             {workflow.name}
           </h3>
 
@@ -80,7 +83,8 @@ const WorkflowDetailsModal: React.FC<WorkflowDetailsModalProps> = ({
                     {workflow.integrations.map((service: string, i: number) => (
                       <span key={i} style={{
                         display: 'inline-block',
-                        backgroundColor: '#f3f4f6',
+                        backgroundColor: 'hsl(var(--muted))',
+                        color: 'hsl(var(--muted-foreground))',
                         padding: '2px 8px',
                         margin: '2px',
                         borderRadius: '12px',
@@ -98,7 +102,7 @@ const WorkflowDetailsModal: React.FC<WorkflowDetailsModalProps> = ({
           {workflow.description && (
             <div style={{ marginBottom: '20px' }}>
               <strong>Description:</strong>
-              <p style={{ marginTop: '5px', color: '#6b7280' }}>{workflow.description}</p>
+              <p style={{ marginTop: '5px', color: 'hsl(var(--muted-foreground))' }}>{workflow.description}</p>
             </div>
           )}
 
@@ -107,8 +111,8 @@ const WorkflowDetailsModal: React.FC<WorkflowDetailsModalProps> = ({
               onClick={() => onDownload(workflow.filename)}
               style={{
                 padding: '10px 20px',
-                backgroundColor: '#3b82f6',
-                color: 'white',
+                backgroundColor: 'hsl(var(--primary))',
+                color: 'hsl(var(--primary-foreground))',
                 border: 'none',
                 borderRadius: '6px',
                 cursor: 'pointer'
@@ -120,8 +124,8 @@ const WorkflowDetailsModal: React.FC<WorkflowDetailsModalProps> = ({
               onClick={() => onCopyJson(workflow.filename)}
               style={{
                 padding: '10px 20px',
-                backgroundColor: '#059669',
-                color: 'white',
+                backgroundColor: 'hsl(var(--secondary))',
+                color: 'hsl(var(--secondary-foreground))',
                 border: 'none',
                 borderRadius: '6px',
                 cursor: 'pointer'
@@ -133,8 +137,8 @@ const WorkflowDetailsModal: React.FC<WorkflowDetailsModalProps> = ({
               onClick={() => onCopyMermaid(workflow.filename)}
               style={{
                 padding: '10px 20px',
-                backgroundColor: '#7c3aed',
-                color: 'white',
+                backgroundColor: 'hsl(var(--accent))',
+                color: 'hsl(var(--accent-foreground))',
                 border: 'none',
                 borderRadius: '6px',
                 cursor: 'pointer'
