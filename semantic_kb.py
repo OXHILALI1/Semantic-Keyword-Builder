@@ -11,8 +11,9 @@ st.title("🔑 Semantic Keyword Builder")
 
 st.markdown(
     """
-This app uses a large language model to generate a semantic keyword universe (EAV-based) for SEO/content strategy.
-It returns a structured keyword list and lets you download everything as CSV.
+This app uses a large language model to generate a semantically enriched keyword universe (EAV-based) for SEO and content strategy.
+It groups keywords using topic-level conceptual labels (not formal knowledge-graph entities). It returns a structured keyword list and lets you download everything as CSV.
+
 """
 )
 
@@ -229,14 +230,18 @@ if run_button:
                 st.code(raw, language="json")
         st.stop()
 
+    st.caption("Topic entity labels are conceptual clustering labels. KG confidence reflects that these are not resolved knowledge-graph entities.")
+
     df = pd.DataFrame(keywords_list)
+    if "entity" in df.columns:
+        df = df.rename(columns={"entity": "topic_entity_label"})
 
     # Reorder columns for convenience if they exist
     preferred_cols = [
         "keyword",
         "volume_level",
         "intent",
-        "entity",
+        "topic_entity_label",
         "attribute",
         "variable",
         "source",
@@ -270,5 +275,3 @@ if run_button:
         st.code(raw, language="json")
 else:
     st.info("Configure your project in the sidebar and click 'Generate Keyword Universe 🚀'.")
-
-
